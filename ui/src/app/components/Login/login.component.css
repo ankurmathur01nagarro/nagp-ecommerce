@@ -1,0 +1,23 @@
+
+/*===========================================================================*\
+|  Login & Register
+\*===========================================================================*/
+.login-register { padding-top: 65px; padding-bottom: 40px; }
+.login-register .whith-f-t { border: 1px solid #d7d9db; max-width: 570px; min-height: 160px; margin: 0 auto; text-align: center; }
+.login-register .whith-f-t p { background-color: #fff; padding: 15px; display: inline-block; color: #737880; font-size: 14px; transform: translateY(-50%); }
+.login-register .whith-f-t a { display: inline-block; width: 195px; height: 50px; line-height: 50px; vertical-align: middle; color: #fff; font-size: 18px; text-transform: uppercase !important; margin: -10px 10px 20px 10px; }
+.login-register .whith-f-t a.facebook { background-color: #3c599f; }
+.login-register .whith-f-t a.facebook span { margin-right: 5px; }
+.login-register .whith-f-t a.twitter { background-color: #1ec7fd; }
+.login-register .whith-f-t a.twitter span { margin-right: 10px; }
+.login-register .login a { margin: 0; margin-left: 25px; vertical-align: bottom; color: #dccc99; }
+.login-register .login a:hover { color: #737880; }
+.login-register .login .stl { margin: 0; color: #6e747a; font-size: 13px; vertical-align: bottom; }
+.login-register .login .stl span { margin: 0; margin-right: 5px; vertical-align: bottom; }
+.login-register h6 { border-bottom: 1px solid #d7d9db; padding-bottom: 10px; margin-bottom: 25px; }
+.login-register form { margin-top: 45px; margin-bottom: 45px; }
+.login-register form > div { margin-left: 0; color: #6e747a; font-size: 13px; margin-bottom: 17px; }
+.login-register form > div > p { margin-bottom: 6px; }
+.login-register input { margin-bottom: 12px; margin-top: 5px; vertical-align: middle; height: 39px; line-height: 39px; }
+.login-register input[type=password] { margin-bottom: 8px; }
+.login-register input[type=submit], .login-register button { width: 107px; height: 38px; line-height: 38px; vertical-align: middle; padding: 0; text-align: center; text-transform: uppercase; margin-right: 13px; }

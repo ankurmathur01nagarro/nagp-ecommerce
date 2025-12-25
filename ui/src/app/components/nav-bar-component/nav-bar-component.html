@@ -1,0 +1,172 @@
+<ng-template #megaTemplate let-navItem="data">
+  <div class="sub-nav full padding">
+    <!-- Custom mega menu content with custom component rendering can go here. -->
+  </div>
+</ng-template>
+
+<ng-template #tabularTemplate let-navItem="data">
+  <div class="sub-nav full padding">
+    <div class="row">
+      @for (col of navItem.columns; track col.header) {
+      <div [class]="`col-xs-${col.size}`">
+        <h3 class="sub-nav-title">{{col.header}}</h3>
+        <ul class="sub-nav-group sub-nav-grey">
+          @for (item of col.items; track item.label) {
+          <li>
+            <a [href]="item.link || '#'">
+              <span>
+                @if (item.icon) { <i [class]="item.icon"></i> }
+                {{item.label}}
+              </span>
+            </a>
+          </li>}
+        </ul>
+      </div>}
+    </div>
+  </div>
+</ng-template>
+
+<ng-template #navBarChildTemplate let-navItem="data">
+  @if (navItem.subItems?.length) {
+  <div class="sub-nav">
+    <ul class="sub-nav-group">
+      @for (subItem of navItem.subItems; track subItem.label) {
+      <li [class]="{'has-sub-nav': subItem.subItems?.length}">
+        <a [href]="subItem.link || '#'">
+          <span>
+            @if (subItem.icon) { <i [class]="subItem.icon"></i> }
+            {{subItem.label}}
+          </span>
+        </a>
+        <ng-container [ngTemplateOutlet]="navBarChildTemplate" [ngTemplateOutletContext]="{ data: subItem }"></ng-container>
+      </li>}
+    </ul>
+  </div>}
+</ng-template>
+<!-- header bar begin -->
+<div id="header-bar">
+  <div class="container">
+    <div class="row">
+      <div class="col-md-3 top-search-box hidden-sm hidden-xs">
+        <form action="/" method="post">
+          <div class="required form-group">
+            <input
+              type="text"
+              name="search_query"
+              placeholder="Search"
+              class="placeholder-fix top-search"
+              autocomplete="off"
+            />
+            <button><i class="icon_search field-icon"></i></button>
+          </div>
+        </form>
+      </div>
+      <div id="header-logo" class="col-md-6 col-sm-12">
+        <a href="#">
+          <img
+            src="images/logo.svg"
+            class="logo center-block hidden-xs"
+            alt="Shop+ - Responsive HTML5 Multipurpose Ecommerce Template"
+          />
+          <img
+            src="images/logo.svg"
+            class="logo center-block visible-xs hidden-sm"
+            alt="Shop+ - Responsive HTML5 Multipurpose Ecommerce Template"
+          />
+        </a>
+      </div>
+      <div class="col-md-3 hidden-sm hidden-xs">
+        <div id="shopping-cart-wrapper" class="dropdown">
+          <a href="#" class="shp-ca" data-toggle="dropdown">
+            <div class="s-bag-1">
+              <i class="icon-bag"></i>
+            </div>
+            <div class="s-cart-pan">
+              <div class="s-bag-2">
+                <span class="dd-products-count">2</span> item(s) /
+                <span class="active dd-products-price">$230.00</span>
+              </div>
+            </div>
+          </a>
+          <div class="dropdown-menu dropdown-menu-right larger text-left" role="menu">
+            <span class="dropdown-triangle-up"></span>
+            <a href="#" class="dd-close-btn"><i class="icon_close"></i></a>
+            <div class="dropdown-head">
+              <h4 class="pull-left">2 items in the shopping bag</h4>
+            </div>
+            <div class="dd-wrapper">
+              <div class="dd-list-empty">There is no product in shopping cart!</div>
+              <div id="cart-product-group" class="dropdown-product-list">
+                <div class="dd-product-group" id="pr5">
+                  <div class="dd-product-box pull-left">
+                    <a href="product-page.html" title="product name">
+                      <img src="images/pr_2-small.jpg" alt="product name" />
+                    </a>
+                  </div>
+                  <div class="dd-product-desc pull-left">
+                    <a class="title"
+                      >Beautiful Fit Velvet Sweater For Him test for longer header test for longer
+                      header</a
+                    >
+                    <div class="qty">1 x <span class="active">$700.00</span></div>
+                    <a href="#" class="close-btn ddr"><i class="icon_close"></i></a>
+                  </div>
+                </div>
+                <div class="dd-product-group" id="pr6">
+                  <div class="dd-product-box pull-left">
+                    <a href="product-page.html" title="product name">
+                      <img src="images/pr_3-small.jpg" alt="product name" />
+                    </a>
+                  </div>
+                  <div class="dd-product-desc pull-left">
+                    <a class="title">Beautiful Fit Velvet Sweater For Here</a>
+                    <div class="qty">1 x <span class="active">$800.00</span></div>
+                    <a href="#" class="close-btn ddr"><i class="icon_close"></i></a>
+                  </div>
+                </div>
+                <div class="text-center clear-all-btn">
+                  <span class="cart-block-subtotal"> Cart Subtotal: $1500.00 </span>
+                </div>
+              </div>
+              <div class="row no-gutter">
+                <div class="col-xs-6">
+                  <a href="shopping-cart.html" class="btn btn-md btn-third-col btn-w100"
+                    >View Cart</a
+                  >
+                </div>
+                <div class="col-xs-6">
+                  <a href="checkout.html" class="btn btn-md btn-third-col btn-w100"
+                    >Procced to Checkout</a
+                  >
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- header bar end -->
+<!-- main menu begin -->
+<div class="top-menu">
+  <div class="container">
+    <nav #mainMenu class="main-menu">
+      <ul class="nav-menu">
+        @for (navItem of navBarItemCollection; track navItem.label) {
+          <li class="nav-item">
+            <a [href]="navItem.link || '#'"><span><i [class]="navItem.icon"></i>{{navItem.label}}</span></a>
+            @if (navItem.subItemType === 'simple') {
+              <ng-container [ngTemplateOutlet]="navBarChildTemplate" [ngTemplateOutletContext]="{ data: navItem }"></ng-container>
+            } @else if (navItem.subItemType === 'tabular') {
+              <ng-container [ngTemplateOutlet]="tabularTemplate" [ngTemplateOutletContext]="{ data: navItem }"></ng-container>
+            } @else if (navItem.subItemType === 'mega') {
+              <ng-container [ngTemplateOutlet]="navItem.template" [ngTemplateOutletContext]="{ data: navItem }"></ng-container>
+            }
+          </li>
+        }
+      </ul>
+    </nav>
+  </div>
+</div>
+<!-- main menu end -->
