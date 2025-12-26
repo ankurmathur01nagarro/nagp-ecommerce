@@ -1,4 +1,4 @@
-import { Component, ElementRef, type AfterViewInit, forwardRef, input, viewChild, contentChildren, contentChild, signal, computed, afterRenderEffect } from '@angular/core';
+import { Component, ElementRef, forwardRef, input, viewChild, contentChildren, contentChild, signal, computed, afterRenderEffect, afterNextRender } from '@angular/core';
 import { NgTemplateOutlet } from "@angular/common";
 
 @Component({
@@ -27,11 +27,17 @@ export class NavBarComponent {
     </div>
     <!-- main menu end -->`,
 })
-export class NavMenu implements AfterViewInit {
+export class NavMenu {
   mainMenu = viewChild.required('mainMenu', { read: ElementRef<HTMLElement> });
   subMenuItems = contentChildren(NavItem);
 
   constructor() {
+    afterNextRender({
+      write: () => {
+        this.initializeMegaMenu();
+      }
+    });
+
     afterRenderEffect(() => {
       if (this.subMenuItems().length > 0) {
         // Logic to handle submenu items
@@ -39,12 +45,6 @@ export class NavMenu implements AfterViewInit {
           item.isNavItem.set(true);
         });
       }
-    });
-  }
-
-  ngAfterViewInit(): void {
-    jQuery(() => {
-      this.initializeMegaMenu();
     });
   }
 
