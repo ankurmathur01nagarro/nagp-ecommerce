@@ -18,6 +18,7 @@
           "options": {
             "browser": "src/main.ts",
             "tsConfig": "tsconfig.app.json",
+            "outputPath": "dist",
             "assets": [
               {
                 "glob": "**/*",
@@ -75,6 +76,9 @@
         },
         "test": {
           "builder": "@angular/build:unit-test"
+        },
+        "deploy": {
+          "builder": "@jefiozie/ngx-aws-deploy:deploy"
         }
       }
     }

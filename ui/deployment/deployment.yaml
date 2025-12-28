@@ -1,0 +1,40 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: nagp-ecom-ui
+  labels:
+    app: nagp-ecom-ui
+spec:
+  ports:
+  - port: 80
+    targetPort: 80
+  type: LoadBalancer
+  selector:
+    app: nagp-ecom-ui
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nagp-ecom-ui
+  labels:
+    app: nagp-ecom-ui
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nagp-ecom-ui
+  template:
+    metadata:
+      labels:
+        app: nagp-ecom-ui
+    spec:
+      containers:
+      - name: nagp-ecom-ui
+        image: docker.io/ankurmathur01nagarro/nagp-ecom-ui
+        resources:
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
