@@ -2,9 +2,10 @@ apiVersion: skaffold/v4beta13
 kind: Config
 metadata:
   name: src
+
 build:
   artifacts:
-    - image: docker.io/ankurmathur01nagarro/nagp-ecom-ui
+    - image: ankurmathur01nagarro/nagp-ecom-ui
       context: ui
       docker:
         dockerfile: Dockerfile

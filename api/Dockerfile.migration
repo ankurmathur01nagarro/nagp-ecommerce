@@ -1,0 +1,16 @@
+FROM mcr.microsoft.com/dotnet/sdk:9.0.303 AS build
+WORKDIR /App
+
+# Copy everything
+COPY . .
+# Restore as distinct layers
+RUN dotnet restore ./NAGP.Api.MigrationJob/NAGP.Api.MigrationJob.csproj
+# Build and publish a release
+RUN dotnet publish ./NAGP.Api.MigrationJob/NAGP.Api.MigrationJob.csproj -o out
+
+# Build runtime image
+FROM mcr.microsoft.com/dotnet/runtime:9.0.7-noble
+WORKDIR /App/
+COPY --from=build /App/out .
+
+ENTRYPOINT ["dotnet", "NAGP.Api.MigrationJob.dll"]

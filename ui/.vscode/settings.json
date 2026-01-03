@@ -1,0 +1,7 @@
+{
+    "yaml.schemas": {
+        "helm": "*.h.yaml",
+        "kubernetes": "*.k8s.yaml",
+        "https://raw.githubusercontent.com/GoogleContainerTools/skaffold/main/docs-v2/content/en/schemas/v4beta13.json": "file:///c%3A/nagp-casestudy/src/skaffold.yaml"
+    }
+}

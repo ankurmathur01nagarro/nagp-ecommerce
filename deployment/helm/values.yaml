@@ -1,0 +1,13 @@
+project: nagp-ecom
+imgVersion: v1.0.5
+config:
+  spec:
+    destination:
+      server: https://kubernetes.default.svc
+    source:
+      repoURL: https://github.com/ankurmathur01nagarro/nagp-ecommerce
+      targetRevision: HEAD
+
+applications:
+  - name: nagp-ecom-ui
+    repoPath: ui/deployment

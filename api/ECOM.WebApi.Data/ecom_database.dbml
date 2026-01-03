@@ -1,0 +1,63 @@
+// Use DBML to define your database structure
+// Docs: https://dbml.dbdiagram.io/docs
+
+Table Users {
+  id integer [pk]
+  username varchar [not null]
+  email varchar [not null]
+  mobile_number varchar
+  role varchar [not null]
+  created_at timestamp
+  updated_at timestamp
+}
+
+
+Table ProductCategory {
+  id integer [primary key]
+  parentId integer [ref: > ProductCategory.id]
+  name varchar [not null]
+}
+
+Table Products {
+  id integer [primary key]
+  name varchar [not null]
+  price float
+  categoryId integer [not null, ref: > ProductCategory.id]
+  metadata JSONB [note: 'details about the product']
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table ProductImages {
+  id integer [primary key]
+  productId integer [not null, ref: > Products.id]
+  imageData blob
+  imageUrl varchar
+  thumbnailData blob
+  thumbnailUrl varchar
+  index number [not null]
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table ProductInventory {
+  id integer [primary key]
+  productId number [not null, ref: > Products.id]
+  count number [not null]
+  offerId number
+}
+
+TableGroup Products {
+  Note: 'Tables related to Products functionality'
+  Products
+  ProductCategory
+  ProductImages
+  ProductInventory
+}
+
+Table UserProductCart {
+  id integer [primary key]
+  productId integer [not null, ref: > Products.id]
+  userId integer [not null, ref: > Users.id]
+  quantity integer [not null]
+}

@@ -1,0 +1,18 @@
+FROM mcr.microsoft.com/dotnet/sdk:9.0.303 AS build
+WORKDIR /App
+
+# Copy everything
+COPY . .
+# Restore as distinct layers
+RUN dotnet restore ./NAGP.Api/NAGP.Api.csproj
+# Build and publish a release
+RUN dotnet publish ./NAGP.Api/NAGP.Api.csproj -o out
+
+# Build runtime image
+FROM mcr.microsoft.com/dotnet/aspnet:9.0
+WORKDIR /App
+COPY --from=build /App/out .
+
+EXPOSE 8080
+
+ENTRYPOINT ["dotnet", "NAGP.Api.dll"]
