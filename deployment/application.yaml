@@ -21,7 +21,7 @@ spec:
   source:
     repoURL: https://github.com/ankurmathur01nagarro/nagp-ecommerce
     targetRevision: HEAD
-    path: deployment/argocd-infra
+    path: deployment/apps
   destination:
     server: https://kubernetes.default.svc
     namespace: nagp-ecom

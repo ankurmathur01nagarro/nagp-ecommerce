@@ -5,18 +5,22 @@ echo Install Gateway API, ArgoCD CRDs
 echo ================================================================
 kubectl apply --server-side -f "https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.4.1/standard-install.yaml"
 
-kubectl create namespace argocd
 helm repo add argo https://argoproj.github.io/argo-helm
+helm repo add traefik https://traefik.github.io/charts
 helm repo update
+
+kubectl create namespace argocd
 helm install argocd argo/argo-cd -n argocd
 
 echo ================================================================
-echo Install traefik certificates
+echo Install traefik
 echo ================================================================
+kubectl create namespace traefik
 rem Generate a self signed certificate valid for *.docker.localhost
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout tls.key -out tls.crt -subj "/CN=*.docker.localhost"
 rem Create the TLS secret in the traefik namespace
 kubectl create secret tls local-selfsigned-tls --cert=tls.crt --key=tls.key --namespace traefik
+helm install traefik traefik/traefik -n traefik --values .\deployment\traefik-values.yaml
 
 echo ================================================================
 echo Login into ArgoCD
@@ -34,4 +38,5 @@ echo ================================================================
 echo ================================================================
 echo Install ArgoCD Application that contains all (Apps of App Pattern)
 echo ================================================================
+kubectl create namespace nagp-ecom
 kubectl apply -f .\deployment\application.yaml
