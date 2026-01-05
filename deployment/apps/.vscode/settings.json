@@ -1,5 +1,6 @@
 {
     "yaml.schemas": {
         "kubernetes": "*.k8s.yaml",
+        "gateway.networking.k8s.io/v1": "*.k8s.gateway.yaml"
     }
 }

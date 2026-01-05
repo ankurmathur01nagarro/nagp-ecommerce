@@ -1,0 +1,31 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: nagp-ecom
+  namespace: argocd
+spec:
+  destinations:
+  - name: defaultCluster
+    namespace: nagp-ecom
+    server: https://kubernetes.default.svc
+  sourceRepos:
+  - https://github.com/ankurmathur01nagarro/nagp-ecommerce
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: nagp-ecom-apps
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/ankurmathur01nagarro/nagp-ecommerce
+    targetRevision: HEAD
+    path: deployment/argocd-infra
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: nagp-ecom
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
