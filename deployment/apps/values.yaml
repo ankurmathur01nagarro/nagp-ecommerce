@@ -11,3 +11,5 @@ config:
 applications:
   - name: nagp-ecom-ui
     repoPath: ui/deployment
+  - name: nagp-ecom-api
+    repoPath: api/deployment
