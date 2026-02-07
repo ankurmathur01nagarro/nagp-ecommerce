@@ -1,0 +1,19 @@
+apiVersion: install.istio.io/v1alpha3
+kind: IstioOperator
+metadata:
+  name: istio-controlplane
+  namespace: istio-system
+spec:
+  profile: ambient
+  meshConfig:
+    enableTracing: true
+    defaultConfig:
+      tracing: {} # disable legacy MeshConfig tracing options
+    extensionProviders:
+    - name: otel
+      opentelemetry:
+        service: otel-opentelemetry-collector.observability.svc.cluster.local
+        port: 4317
+        resource_detectors:
+          environment: {}
+    accessLogFile: /dev/stdout

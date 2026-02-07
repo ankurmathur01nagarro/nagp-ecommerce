@@ -1,0 +1,52 @@
+mode: deployment
+
+image:
+  repository: otel/opentelemetry-collector-contrib
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+config:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+  processors:
+    batch:
+      timeout: 5s
+      send_batch_size: 1024
+  exporters:
+    debug:
+      verbosity: detailed
+    otlp_http/newrelic:
+      endpoint: https://otlp.eu01.nr-data.net:4318
+      tls:
+        insecure: true
+      headers:
+        api-key: ${NEW_RELIC_API_KEY}
+  service:
+    pipelines:
+      metrics:
+        receivers: [otlp]
+        processors: [batch]
+        exporters: [otlp_http/newrelic, debug]
+      logs:
+        receivers: [otlp]
+        processors: [batch]
+        exporters: [otlp_http/newrelic, debug]
+      traces:
+        receivers: [otlp]
+        processors: [batch]
+        exporters: [otlp_http/newrelic, debug]
+extraEnvs:
+  - name: NEW_RELIC_API_KEY
+    valueFrom:
+      secretKeyRef:
+        name: newrelic-otel-secret
+        key: api-key
