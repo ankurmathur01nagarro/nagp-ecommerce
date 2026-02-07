@@ -15,6 +15,7 @@ kubectl apply --server-side -f "https://github.com/kubernetes-sigs/gateway-api/r
 
 helm repo add argo https://argoproj.github.io/argo-helm
 helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 helm repo update
 
 echo ================================================================
@@ -25,14 +26,15 @@ kubectl apply -f deployment/istio-resources.k8s.yaml
 kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-1.28/samples/addons/kiali.yaml
 
 kubectl create namespace observability
-
-@echo Create New Relic secret for OpenTelemetry Collector
+rem Create New Relic secret for OpenTelemetry Collector
 kubectl create secret generic newrelic-otel-secret --from-literal=api-key=eu01xx464c0a4003a336f553b4808643FFFFNRAL -n observability
 
+rem Install OpenTelemetry Collector via Helm
 helm install otel open-telemetry/opentelemetry-collector -f .\deployment\helm-otel-values.yaml -n observability
-rem Wait for the OpenTelemetry Collector to be ready
 kubectl wait -n observability --for=condition=ready pod -l app.kubernetes.io/name=opentelemetry-collector --timeout=120s
-kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-1.28/samples/addons/jaeger.yaml
+
+rem Install Prometheus via Helm with remote_write to OTel Collector
+helm install prometheus prometheus-community/prometheus -f .\deployment\helm-prometheus-values.yaml -n observability
 
 echo ================================================================
 echo Install ArgoCD

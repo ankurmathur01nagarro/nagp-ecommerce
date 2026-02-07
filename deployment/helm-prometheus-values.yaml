@@ -1,0 +1,25 @@
+# Prometheus Helm Chart Values - OTel Integration
+# Minimal config with remote_write to OTel Collector
+
+server:
+  extraArgs:
+    enable-feature: metadata-wal-records
+
+  # Remote Write configuration to OTel Collector
+  remoteWrite:
+    - url: http://otel-opentelemetry-collector.observability:9090/api/v1/write
+
+alertmanager:
+  enabled: false
+
+prometheus-pushgateway:
+  enabled: false
+
+prometheus-node-exporter:
+  enabled: true
+
+kube-state-metrics:
+  enabled: true
+
+rbac:
+  create: true
