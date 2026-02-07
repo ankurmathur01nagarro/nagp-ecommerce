@@ -6,12 +6,14 @@ metadata:
     app: nagp-ecom-ui
     type: gateway-ingress
     stack: nagp-ecom
+  namespace: nagp-ecom
 spec:
   parentRefs:
-    - name: traefik-gateway # Name of the Gateway that Traefik creates when you enable the Gateway API provider
-      namespace: traefik
+    - name: nagp-ecom-gateway
+      namespace: default
   hostnames:
     - "ecom.docker.localhost"
+    - "localhost"
   rules:
   - name: ui-routes
     matches:
@@ -20,4 +22,5 @@ spec:
         value: /
     backendRefs:
     - name: nagp-ecom-ui
+      namespace: nagp-ecom
       port: 80
