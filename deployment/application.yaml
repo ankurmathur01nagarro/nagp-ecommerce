@@ -2,7 +2,7 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
   name: nagp-ecom-gateway
-  namespace: default
+  namespace: nagp-ecom
 spec:
   gatewayClassName: istio
   listeners:
