@@ -16,6 +16,7 @@ kubectl apply --server-side -f "https://github.com/kubernetes-sigs/gateway-api/r
 helm repo add argo https://argoproj.github.io/argo-helm
 helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo add grafana https://grafana.github.io/helm-charts
 helm repo add grafana-community https://grafana-community.github.io/helm-charts
 helm repo add jaegertracing https://jaegertracing.github.io/helm-charts
 helm repo update
@@ -44,8 +45,8 @@ kubectl wait -n observability --for=condition=ready pod -l app.kubernetes.io/nam
 rem Install Prometheus via Helm with remote_write to OTel Collector
 helm install prometheus prometheus-community/prometheus -f .\deployment\helm-prometheus-values.yaml -n observability
 
-rem Install Loki via Helm for log storage
-helm install loki grafana-community/loki -f .\deployment\helm-loki-values.yaml -n observability
+rem Install Loki via Helm for log storage (official grafana repo, not grafana-community)
+helm install loki grafana/loki -f .\deployment\helm-loki-values.yaml -n observability
 kubectl wait -n observability --for=condition=ready pod -l app.kubernetes.io/name=loki --timeout=120s
 
 rem Install Jaeger via Helm for trace storage

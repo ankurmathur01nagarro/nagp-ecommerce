@@ -642,8 +642,8 @@ cd c:\nagp-casestudy\src\deployment
 
 # 1. Add Helm repositories
 helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
-helm repo add grafana https://grafana.github.io/helm-charts
-helm repo add grafana-community https://grafana-community.github.io/helm-charts
+helm repo add grafana https://grafana.github.io/helm-charts          # Loki chart
+helm repo add grafana-community https://grafana-community.github.io/helm-charts  # Grafana dashboard chart
 helm repo add jaegertracing https://jaegertracing.github.io/helm-charts
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 helm repo update
@@ -718,7 +718,8 @@ create-cluster.bat
 ```
 The script exits with an error if the env var is not set.
 
-**Grafana chart:** Uses `grafana-community/grafana` repo (migrated from `grafana/grafana` after Jan 30, 2026).
+**Grafana chart:** Uses `grafana-community/grafana` repo (migrated from `grafana/grafana` after Jan 30, 2026).  
+**Loki chart:** Uses official `grafana/loki` repo (not `grafana-community`).
 
 ---
 
@@ -1053,10 +1054,10 @@ spec:
 | Component | Image | Chart Version | Status |
 |-----------|-------|---------------|--------|
 | Jaeger | `jaegertracing/jaeger:2.14.1` | jaeger-4.4.6 | ✅ Supported |
-| Loki | `grafana/loki:3.6.4` | loki-6.52.0 | ✅ Supported |
+| Loki | `grafana/loki:3.6.4` | loki-6.52.0 | ✅ Supported (official `grafana` repo) |
 | OTel Collector | `otel/opentelemetry-collector-contrib:0.145.0` | opentelemetry-collector-0.145.0 | ✅ Supported |
 | Prometheus | `quay.io/prometheus/prometheus:v3.9.1` | prometheus-28.9.0 | ✅ Supported |
-| Grafana | `grafana/grafana` | grafana | ✅ Supported (migrating to grafana-community) |
+| Grafana | `grafana/grafana` | grafana | ✅ Supported (`grafana-community` repo) |
 | New Relic | Cloud (EU endpoint) | N/A | ✅ Connected |
 
 ---

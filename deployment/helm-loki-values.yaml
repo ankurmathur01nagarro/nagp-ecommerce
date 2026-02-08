@@ -1,5 +1,6 @@
 # Loki 3.x Helm Chart Values - with OTLP log ingestion support
-# Chart: grafana/loki (standalone)
+# Chart: grafana/loki (official grafana repo, not grafana-community)
+# Repo: https://grafana.github.io/helm-charts
 # Requires: Loki 3.x for native OTLP support
 
 deploymentMode: SingleBinary

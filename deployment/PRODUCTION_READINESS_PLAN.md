@@ -48,6 +48,7 @@ Full configuration details are documented in [CONFIGURATION_MANUAL.md](CONFIGURA
 |----|------|------------|----------|
 | P2-3 | No Grafana persistence | Enabled persistence (1Gi PVC, `storageClassName: local-path`) | grafana rev 2 |
 | P2-7 | Grafana chart migrated | Updated `create-cluster.bat` to use `grafana-community` repo | script updated |
+| P2-8 | Loki chart repo incorrect | Migrated Loki from `grafana-community/loki` to official `grafana/loki` repo | script updated |
 
 ---
 
