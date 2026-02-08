@@ -41,6 +41,17 @@ spec:
   - name: defaultCluster
     namespace: istio-system
     server: https://kubernetes.default.svc
+  # Allow cluster-scoped resources (ClusterRole, ClusterRoleBinding created by Helm charts)
+  - name: defaultCluster
+    namespace: '*'
+    server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+  - group: ''
+    kind: Namespace
+  - group: rbac.authorization.k8s.io
+    kind: ClusterRole
+  - group: rbac.authorization.k8s.io
+    kind: ClusterRoleBinding
   sourceRepos:
   - '*'
 ---
