@@ -50,7 +50,8 @@ $components = @(
     @{ Label = "app.kubernetes.io/name=opentelemetry-collector"; Name = "OTel Collector" },
     @{ Label = "app.kubernetes.io/name=loki"; Name = "Loki" },
     @{ Label = "app.kubernetes.io/name=jaeger"; Name = "Jaeger" },
-    @{ Label = "app.kubernetes.io/instance=prometheus"; Name = "Prometheus" }
+    @{ Label = "app.kubernetes.io/instance=prometheus"; Name = "Prometheus" },
+    @{ Label = "app.kubernetes.io/name=grafana"; Name = "Grafana" }
 )
 
 foreach ($component in $components) {
@@ -78,7 +79,7 @@ foreach ($component in $components) {
 Write-Host ""
 Write-Host "Pod Details:"
 kubectl get pods -n $Namespace -o wide 2>$null | Select-Object -Index 0
-kubectl get pods -n $Namespace -o wide 2>$null | Select-Object -Skip 1 | Where-Object { $_ -match "otel|loki|jaeger|prometheus" }
+kubectl get pods -n $Namespace -o wide 2>$null | Select-Object -Skip 1 | Where-Object { $_ -match "otel|loki|jaeger|prometheus|grafana" }
 
 # ============================================
 # STEP 2: Service Discovery
@@ -87,7 +88,7 @@ Write-Section "STEP 2: Service Discovery"
 
 Write-Host "Services:"
 kubectl get svc -n $Namespace -o wide 2>$null | Select-Object -Index 0
-kubectl get svc -n $Namespace -o wide 2>$null | Select-Object -Skip 1 | Where-Object { $_ -match "otel|loki|jaeger|prometheus" }
+kubectl get svc -n $Namespace -o wide 2>$null | Select-Object -Skip 1 | Where-Object { $_ -match "otel|loki|jaeger|prometheus|grafana" }
 
 # ============================================
 # STEP 3: Components Health Check
@@ -386,6 +387,10 @@ Write-Host "Prometheus Metrics (Port 9090):" -ForegroundColor Yellow
 Write-Host "  kubectl port-forward -n observability svc/prometheus-server 9090:80"
 Write-Host "  Then open: http://localhost:9090"
 Write-Host ""
+Write-Host "Grafana Dashboards (Port 3000):" -ForegroundColor Yellow
+Write-Host "  kubectl port-forward -n observability svc/grafana 3000:3000"
+Write-Host "  Then open: http://localhost:3000  (admin / admin)"
+Write-Host ""
 Write-Host "New Relic (Cloud):" -ForegroundColor Yellow
 Write-Host "  Navigate to: https://one.newrelic.com"
 Write-Host ""
@@ -400,12 +405,14 @@ $lokiStatus = kubectl get pods -n $Namespace -l app.kubernetes.io/name=loki -o j
 $jaegerStatus = kubectl get pods -n $Namespace -l app.kubernetes.io/name=jaeger -o jsonpath='{.items[0].status.phase}' 2>$null
 $otelStatus = kubectl get pods -n $Namespace -l app.kubernetes.io/name=opentelemetry-collector -o jsonpath='{.items[0].status.phase}' 2>$null
 $promStatus = kubectl get pods -n $Namespace -l app.kubernetes.io/instance=prometheus -o jsonpath='{.items[0].status.phase}' 2>$null
+$grafanaStatus = kubectl get pods -n $Namespace -l app.kubernetes.io/name=grafana -o jsonpath='{.items[0].status.phase}' 2>$null
 
 Write-Host "Component Status:"
 if ($lokiStatus -eq "Running") { Write-Success "Loki: $lokiStatus" } else { Write-ErrorMsg "Loki: $lokiStatus" }
 if ($jaegerStatus -eq "Running") { Write-Success "Jaeger: $jaegerStatus" } else { Write-ErrorMsg "Jaeger: $jaegerStatus" }
 if ($otelStatus -eq "Running") { Write-Success "OTel Collector: $otelStatus" } else { Write-ErrorMsg "OTel Collector: $otelStatus" }
 if ($promStatus -eq "Running") { Write-Success "Prometheus: $promStatus" } else { Write-ErrorMsg "Prometheus: $promStatus" }
+if ($grafanaStatus -eq "Running") { Write-Success "Grafana: $grafanaStatus" } else { Write-ErrorMsg "Grafana: $grafanaStatus" }
 
 Write-Host ""
 Write-Host "===============================================" -ForegroundColor Green

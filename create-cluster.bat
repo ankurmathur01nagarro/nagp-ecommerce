@@ -46,6 +46,10 @@ rem Install Jaeger via Helm for trace storage
 helm install jaeger jaegertracing/jaeger -f .\deployment\helm-jaeger-values.yaml -n observability
 kubectl wait -n observability --for=condition=ready pod -l app.kubernetes.io/name=jaeger --timeout=120s
 
+rem Install Grafana via Helm for observability dashboards (Loki, Jaeger, Prometheus pre-configured)
+helm install grafana grafana/grafana -f .\deployment\helm-grafana-values.yaml -n observability
+kubectl wait -n observability --for=condition=ready pod -l app.kubernetes.io/name=grafana --timeout=120s
+
 echo ================================================================
 echo Redeploy OpenTelemetry Collector to export to Loki and Jaeger
 echo ================================================================
