@@ -49,6 +49,7 @@ Full configuration details are documented in [CONFIGURATION_MANUAL.md](CONFIGURA
 | P2-3 | No Grafana persistence | Enabled persistence (1Gi PVC, `storageClassName: local-path`) | grafana rev 2 |
 | P2-7 | Grafana chart migrated | Updated `create-cluster.bat` to use `grafana-community` repo | script updated |
 | P2-8 | Loki chart repo incorrect | Migrated Loki from `grafana-community/loki` to official `grafana/loki` repo | script updated |
+| P2-9 | Imperative observability deploys | Migrated all observability Helm releases to ArgoCD App-of-Apps with multi-source apps, sync waves, and separate `observability` AppProject | GitOps |
 
 ---
 

@@ -635,25 +635,50 @@ spec:
 
 ## Deployment Instructions
 
-### Initial Deployment
+### GitOps Deployment (ArgoCD App-of-Apps)
+
+All observability components are managed via ArgoCD using the **App-of-Apps** pattern. The bootstrap script (`create-cluster.bat`) handles only infrastructure prerequisites; ArgoCD syncs everything else from Git.
+
+#### Sync Wave Order
+
+| Wave | Application | Namespace |
+|------|-------------|-----------|
+| 0 | istio-telemetry | istio-system |
+| 1 | loki, jaeger, prometheus | observability |
+| 2 | otel (OpenTelemetry Collector) | observability |
+| 3 | grafana | observability |
+| 5 | nagp-ecom-ui, nagp-ecom-api | nagp-ecom |
+
+#### ArgoCD Configuration (`helm-argocd-values.yaml`)
+
+The ArgoCD Helm install uses a custom values file that restores the **Application health check** (removed in ArgoCD v1.8). This is required for sync waves to work — without it, ArgoCD won't wait for child apps to become Healthy before proceeding to the next wave.
+
+#### AppProjects
+
+| Project | Scope | sourceRepos |
+|---------|-------|-------------|
+| `nagp-ecom` | Microservice apps → `nagp-ecom` namespace | Git repo only |
+| `observability` | Observability stack → `observability` + `istio-system` namespaces | Wildcard `*` |
+
+#### Multi-Source Applications
+
+Helm chart apps use `spec.sources` (plural) with two sources:
+1. **Helm chart** from the external repo (e.g., `https://grafana.github.io/helm-charts`)
+2. **Git repo** referenced via `ref: values` — provides values files from `deployment/helm-*-values.yaml`
+
+Example: ArgoCD resolves `$values/deployment/helm-otel-values.yaml` to the Git repo root.
+
+### Pre-requisites (kept in `create-cluster.bat`)
+
+The bootstrap script still handles items that must exist before ArgoCD:
 
 ```bash
-cd c:\nagp-casestudy\src\deployment
-
-# 1. Add Helm repositories
-helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
-helm repo add grafana https://grafana.github.io/helm-charts          # Loki chart
-helm repo add grafana-community https://grafana-community.github.io/helm-charts  # Grafana dashboard chart
-helm repo add jaegertracing https://jaegertracing.github.io/helm-charts
-helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-helm repo update
-
-# 2. Create namespace
+# 1. Create observability namespace
 kubectl create namespace observability
 
-# 3. Create secrets
+# 2. Create secrets
 kubectl create secret generic newrelic-otel-secret \
-  --from-literal=api-key=<YOUR_API_KEY> \
+  --from-literal=api-key=$NEW_RELIC_API_KEY \
   -n observability
 
 kubectl create secret generic grafana-admin-secret \
@@ -661,55 +686,44 @@ kubectl create secret generic grafana-admin-secret \
   --from-literal=admin-password=changeme \
   -n observability
 
-# 4. Deploy components
-helm install otel open-telemetry/opentelemetry-collector \
-  -f helm-otel-values.yaml -n observability
-
-helm install loki grafana/loki \
-  -f helm-loki-values.yaml -n observability
-
-helm install jaeger jaegertracing/jaeger \
-  -f helm-jaeger-values.yaml -n observability
-
-helm install prometheus prometheus-community/prometheus \
-  -f helm-prometheus-values.yaml -n observability
-
-helm install grafana grafana/grafana \
-  -f helm-grafana-values.yaml -n observability
-
-# 5. Apply Istio telemetry
-kubectl apply -f istio-resources.k8s.yaml
-
-# 6. Verify deployed OTel config has all exporters
-kubectl get configmap otel-opentelemetry-collector -n observability -o jsonpath='{.data.relay}'
+# 3. Install ArgoCD with health check values
+helm install argocd argo/argo-cd -n argocd \
+  -f deployment/helm-argocd-values.yaml
 ```
 
-### Updates After Configuration Changes
+### Configuration Updates
+
+Since all observability components are ArgoCD-managed, updates are done via Git:
 
 ```bash
-# Update specific component
-helm upgrade otel open-telemetry/opentelemetry-collector \
-  -f helm-otel-values.yaml -n observability
+# Edit the values file (e.g., helm-otel-values.yaml)
+# Commit and push to Git
+git add . && git commit -m "update otel config" && git push
 
-helm upgrade jaeger jaegertracing/jaeger \
-  -f helm-jaeger-values.yaml -n observability
+# ArgoCD auto-syncs the changes (selfHeal + prune enabled)
+# To force immediate sync:
+argocd app sync otel
+```
 
-helm upgrade loki grafana/loki \
-  -f helm-loki-values.yaml -n observability
+### Manual Helm Operations (emergency only)
 
-helm upgrade prometheus prometheus-community/prometheus \
-  -f helm-prometheus-values.yaml -n observability
+If ArgoCD is down or for debugging, you can still use Helm directly:
 
-helm upgrade grafana grafana/grafana \
-  -f helm-grafana-values.yaml -n observability
+```bash
+# Verify deployed OTel config has all exporters
+kubectl get configmap otel-opentelemetry-collector -n observability -o jsonpath='{.data.relay}'
 ```
 
 ### Automated Setup (`create-cluster.bat`)
 
-The `create-cluster.bat` script automates full cluster provisioning including:
+The `create-cluster.bat` script handles cluster bootstrapping prerequisites:
 - k3d cluster creation (1 server + 2 agents)
 - Istio ambient profile installation
-- Helm repo setup and all component installs
+- Namespace + secret creation for observability
+- ArgoCD installation with health check values file
+- ArgoCD App-of-Apps deployment (triggers GitOps sync of all components)
+
+**Observability components** are no longer installed by the script — they are managed entirely by ArgoCD via the App-of-Apps pattern.
 
 **API Key:** The script reads `%NEW_RELIC_API_KEY%` from the environment. Set it before running:
 ```bat

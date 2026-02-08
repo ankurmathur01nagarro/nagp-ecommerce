@@ -8,8 +8,75 @@ config:
       repoURL: https://github.com/ankurmathur01nagarro/nagp-ecommerce
       targetRevision: HEAD
 
+# Observability AppProject name (used by helmApplications and rawApplications)
+observability:
+  project: observability
+
+# ──────────────────────────────────────────────────────────────────────
+# 1. Microservice applications (single-source, Git path-based)
+# ──────────────────────────────────────────────────────────────────────
 applications:
   - name: nagp-ecom-ui
     repoPath: ui/deployment
+    syncWave: "5"
   - name: nagp-ecom-api
     repoPath: api/deployment
+    syncWave: "5"
+
+# ──────────────────────────────────────────────────────────────────────
+# 2. Helm chart applications (multi-source with $values ref)
+#    Sync waves: 1 = storage/backends, 2 = collector, 3 = dashboards
+# ──────────────────────────────────────────────────────────────────────
+helmApplications:
+  # Wave 1 — Storage & backends (no inter-dependencies)
+  - name: loki
+    chart: loki
+    repoURL: https://grafana.github.io/helm-charts
+    chartVersion: "6.52.0"
+    namespace: observability
+    valuesFile: deployment/helm-loki-values.yaml
+    syncWave: "1"
+
+  - name: jaeger
+    chart: jaeger
+    repoURL: https://jaegertracing.github.io/helm-charts
+    chartVersion: "4.4.6"
+    namespace: observability
+    valuesFile: deployment/helm-jaeger-values.yaml
+    syncWave: "1"
+
+  - name: prometheus
+    chart: prometheus
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chartVersion: "28.9.0"
+    namespace: observability
+    valuesFile: deployment/helm-prometheus-values.yaml
+    syncWave: "1"
+
+  # Wave 2 — Collector (depends on Loki, Jaeger, Prometheus endpoints)
+  - name: otel
+    chart: opentelemetry-collector
+    repoURL: https://open-telemetry.github.io/opentelemetry-helm-charts
+    chartVersion: "0.145.0"
+    namespace: observability
+    valuesFile: deployment/helm-otel-values.yaml
+    syncWave: "2"
+
+  # Wave 3 — Dashboard (depends on all datasources being available)
+  - name: grafana
+    chart: grafana
+    repoURL: https://grafana-community.github.io/helm-charts
+    chartVersion: "8.14.4"
+    namespace: observability
+    valuesFile: deployment/helm-grafana-values.yaml
+    syncWave: "3"
+
+# ──────────────────────────────────────────────────────────────────────
+# 3. Raw YAML applications (plain Kubernetes manifests)
+# ──────────────────────────────────────────────────────────────────────
+rawApplications:
+  # Wave 0 — Istio telemetry config (must exist before collector receives traces)
+  - name: istio-telemetry
+    repoPath: deployment/istio-telemetry
+    namespace: istio-system
+    syncWave: "0"

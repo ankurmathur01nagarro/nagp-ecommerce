@@ -13,6 +13,7 @@ spec:
         namespaces:
           from: All
 ---
+# AppProject for microservice applications
 apiVersion: argoproj.io/v1alpha1
 kind: AppProject
 metadata:
@@ -25,6 +26,23 @@ spec:
     server: https://kubernetes.default.svc
   sourceRepos:
   - https://github.com/ankurmathur01nagarro/nagp-ecommerce
+---
+# AppProject for observability stack (separate for security isolation)
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: observability
+  namespace: argocd
+spec:
+  destinations:
+  - name: defaultCluster
+    namespace: observability
+    server: https://kubernetes.default.svc
+  - name: defaultCluster
+    namespace: istio-system
+    server: https://kubernetes.default.svc
+  sourceRepos:
+  - '*'
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
