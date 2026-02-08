@@ -1,113 +1,109 @@
 # Jaeger Helm Chart Configuration - Jaeger v2
-# 
-# Jaeger v2 (recommended): Uses jaegertracing/jaeger image with v2 tag
-# v1 reached EOL on Dec 31, 2025
-# See: https://www.jaegertracing.io/docs/latest/migration/
 #
+# Jaeger v2 uses OpenTelemetry Collector architecture internally.
+# Configuration is done via the `userconfig` block (OTel Collector-style YAML),
+# NOT via v1-style environment variables (which are silently ignored).
+#
+# Chart: jaegertracing/jaeger (v4.4.6), appVersion: 2.14.1
+# Docs: https://www.jaegertracing.io/docs/2.4/configuration/
+# Migration: https://www.jaegertracing.io/docs/2.4/migration/
+
+# Jaeger v2 OTel Collector-style configuration
+userconfig:
+  service:
+    extensions: [jaeger_storage, jaeger_query, healthcheckv2]
+    pipelines:
+      traces:
+        receivers: [otlp]
+        processors: [batch]
+        exporters: [jaeger_storage_exporter]
+    telemetry:
+      resource:
+        service.name: jaeger
+      metrics:
+        level: detailed
+        readers:
+          - pull:
+              exporter:
+                prometheus:
+                  host: 0.0.0.0
+                  port: 8888
+
+  extensions:
+    healthcheckv2:
+      use_v2: true
+      http:
+        endpoint: 0.0.0.0:13133
+
+    jaeger_query:
+      storage:
+        traces: main_store
+
+    jaeger_storage:
+      backends:
+        main_store:
+          memory:
+            max_traces: 5000
+          # --- PRODUCTION: Switch to Elasticsearch or BadgerDB ---
+          # Elasticsearch:
+          #   elasticsearch:
+          #     server_urls: ["http://elasticsearch:9200"]
+          #     auth:
+          #       basic:
+          #         username: admin
+          #         password: ${env:ES_PASSWORD}
+          # BadgerDB (single-node persistent):
+          #   badger:
+          #     directories:
+          #       keys: /badger/key
+          #       values: /badger/data
+          #     ephemeral: false
+          #     ttl:
+          #       spans: 72h
+
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+
+  processors:
+    batch:
+
+  exporters:
+    jaeger_storage_exporter:
+      trace_storage: main_store
+
+# Jaeger deployment settings (chart schema)
 jaeger:
   enabled: true
+  replicas: 1
   image:
     repository: jaegertracing/jaeger
     tag: "2.14.1"
     pullPolicy: IfNotPresent
-
-# Deploy as a single all-in-one instance for development/non-enterprise
-deployment:
-  replicas: 1
-  
-livenessProbe:
-  httpGet:
-    path: /
-    port: 14269
-  initialDelaySeconds: 30
-  periodSeconds: 15
-
-readinessProbe:
-  httpGet:
-    path: /
-    port: 14269
-  initialDelaySeconds: 10
-  periodSeconds: 10
-
-service:
-  type: ClusterIP
-  
-  # Collector service - receives traces from OTel
-  collector:
-    port: 14250
-    targetPort: 14250
-    protocol: TCP
-  
-  # Query/UI service
-  query:
-    port: 16686
-    targetPort: 16686
-    protocol: TCP
-  
-  # Zipkin compatibility
-  zipkin:
-    port: 9411
-    targetPort: 9411
-    protocol: TCP
-
-# Pod resources
-resources:
-  limits:
-    cpu: 500m
-    memory: 512Mi
-  requests:
-    cpu: 100m
-    memory: 128Mi
-
-# Storage configuration - in-memory for simplicity (resets on restart)
-# For persistent storage, use environment variables
-env:
-  - name: COLLECTOR_OTLP_ENABLED
-    value: "true"
-  - name: MEMORY_MAX_TRACES
-    value: "5000"
-  # For persistent storage with BadgerDB, uncomment:
-  # - name: BADGER_EPHEMERAL
-  #   value: "false"
-  # - name: BADGER_DIRECTORY_VALUE
-  #   value: /badger/data
-  # - name: BADGER_DIRECTORY_KEY
-  #   value: /badger/key
-
-# Persistence (optional - disabled for in-memory mode)
-persistence:
-  enabled: false
-  # If using BadgerDB storage, enable persistence:
-  # enabled: true
-  # storageClassName: standard
-  # accessMode: ReadWriteOnce
-  # size: 5Gi
-
-# Ingress (disabled by default)
-ingress:
-  enabled: false
-
-# Pod security
-podSecurityContext:
-  runAsNonRoot: false
-  runAsUser: 0
-
-# Container security context
-securityContext:
-  allowPrivilegeEscalation: false
-  readOnlyRootFilesystem: false
-  capabilities:
-    drop:
-      - ALL
-
-# Node selector
-nodeSelector: {}
-
-# Tolerations
-tolerations: []
-
-# Affinity
-affinity: {}
+  # Resources
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  # Security context — image default is UID 10001
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    runAsGroup: 10001
+    fsGroup: 10001
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+    capabilities:
+      drop:
+        - ALL
 
 # Labels
 commonLabels:

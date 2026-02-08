@@ -25,13 +25,16 @@ Applications (OTLP Instrumented)
 
 ### Data Flow Pipelines
 
-**Desired (per `helm-otel-values.yaml`):**
+**Configured (per `helm-otel-values.yaml`):**
 
 | Pipeline | Receivers | Processors | Exporters |
 |----------|-----------|-----------|----------|
-| **Traces** | otlp | batch | otlp_grpc/jaeger, otlp_http/newrelic, debug |
-| **Logs** | otlp | batch | otlp_http/loki, otlp_http/newrelic, debug |
-| **Metrics** | otlp, prometheusremotewrite | batch | otlp_http/newrelic, debug |
+| **Traces** | otlp | memory_limiter, batch | otlp_grpc/jaeger, otlp_http/newrelic |
+| **Logs** | otlp | memory_limiter, batch | otlp_http/loki, otlp_http/newrelic |
+| **Metrics** | otlp, prometheusremotewrite | memory_limiter, batch | otlp_http/newrelic |
+
+> **Note:** The `debug` exporter is commented out in all pipelines for production.
+> Re-enable temporarily for troubleshooting by uncommenting in `helm-otel-values.yaml`.
 
 > **Note:** The OTel Helm chart merges custom values with its defaults. After any `helm upgrade`, verify the deployed configmap with:
 > ```bash
@@ -106,14 +109,29 @@ otlp_http/loki:
 ```yaml
 otlp_http/newrelic:
   endpoint: https://otlp.eu01.nr-data.net:4318
-  tls:
-    insecure: true
   headers:
     api-key: ${NEW_RELIC_API_KEY}
 ```
 - **Purpose:** Send all signals (traces, logs, metrics) to New Relic cloud
 - **Region:** EU (eu01)
 - **Authentication:** API key from Kubernetes secret
+- **TLS:** Uses default secure TLS (no `insecure: true` — required for external endpoints)
+
+#### Processors Configuration
+
+```yaml
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 400
+    spike_limit_mib: 100
+  batch:
+    timeout: 5s
+    send_batch_size: 1024
+```
+
+- **memory_limiter:** Must be the **first processor** in every pipeline. Prevents OOM by refusing data when memory exceeds `limit_mib`. Works with `GOMEMLIMIT` env var.
+- **batch:** Groups telemetry data before export to reduce network overhead.
 
 #### Service Pipelines
 
@@ -122,17 +140,20 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [batch]
-      exporters: [otlp_grpc/jaeger, otlp_http/newrelic, debug]
+      processors: [memory_limiter, batch]
+      exporters: [otlp_grpc/jaeger, otlp_http/newrelic]
     logs:
       receivers: [otlp]
-      processors: [batch]
-      exporters: [otlp_http/loki, otlp_http/newrelic, debug]
+      processors: [memory_limiter, batch]
+      exporters: [otlp_http/loki, otlp_http/newrelic]
     metrics:
       receivers: [otlp, prometheusremotewrite]
-      processors: [batch]
-      exporters: [otlp_http/newrelic, debug]
+      processors: [memory_limiter, batch]
+      exporters: [otlp_http/newrelic]
 ```
+
+> **Note:** The `debug` exporter has been removed from all pipelines for production.
+> It can be re-enabled temporarily for troubleshooting by uncommenting in `helm-otel-values.yaml`.
 
 #### Environment Variables
 ```yaml
@@ -142,7 +163,12 @@ extraEnvs:
       secretKeyRef:
         name: newrelic-otel-secret
         key: api-key
+  - name: GOMEMLIMIT
+    value: "400MiB"
 ```
+
+- **GOMEMLIMIT:** Sets the Go runtime's soft memory limit. Should match `memory_limiter.limit_mib`.
+  Prevents GC pressure spikes and works alongside the `memory_limiter` processor.
 
 **Secret Creation:**
 ```bash
@@ -176,12 +202,54 @@ jaeger:
 - v1 reached EOL: December 31, 2025
 - Migration guide: https://www.jaegertracing.io/docs/latest/migration/
 
+> **CRITICAL:** Jaeger v2 uses an OTel Collector-based architecture. All v1-style env vars
+> (`MEMORY_MAX_TRACES`, `COLLECTOR_OTLP_ENABLED`, `BADGER_*`) are **silently ignored**.
+> Configuration must use the `userconfig` block with OTel Collector-style YAML.
+
+#### v2 Configuration (userconfig)
+
+Jaeger v2 is configured via a `userconfig` block that defines extensions, receivers,
+exporters, and pipelines in OTel Collector format:
+
+```yaml
+userconfig:
+  extensions:
+    healthcheckv2:
+      http:
+        endpoint: "0.0.0.0:13133"
+    jaeger_storage:
+      backends:
+        main_store:
+          memory:
+            max_traces: 5000
+    jaeger_query:
+      storage:
+        traces: main_store
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: "0.0.0.0:4317"
+        http:
+          endpoint: "0.0.0.0:4318"
+  exporters:
+    jaeger_storage_exporter:
+      trace_storage: main_store
+  service:
+    extensions: [healthcheckv2, jaeger_storage, jaeger_query]
+    pipelines:
+      traces:
+        receivers: [otlp]
+        exporters: [jaeger_storage_exporter]
+```
+
 #### Service Ports
 
 | Port | Protocol | Purpose |
 |------|----------|---------|
 | 4317 | gRPC | OTLP receiver |
 | 4318 | HTTP | OTLP receiver |
+| 13133 | HTTP | Health check (v2 healthcheckv2 extension) |
 | 14250 | gRPC | Jaeger/OTel receiver (all-in-one) |
 | 16686 | HTTP | Query UI |
 | 16685 | gRPC | Query gRPC |
@@ -189,46 +257,52 @@ jaeger:
 | 6832 | UDP | Jaeger binary thrift |
 | 9411 | HTTP | Zipkin receiver |
 
-#### Health Checks (Probes)
+#### Health Checks
+
+Jaeger v2 uses the `healthcheckv2` extension on **port 13133** (not 14269 from v1):
 
 ```yaml
+# The Helm chart auto-configures probes based on userconfig.
+# If customizing, use port 13133:
 livenessProbe:
   httpGet:
-    path: /
-    port: 14269              # Admin server health endpoint
-  initialDelaySeconds: 30
-  periodSeconds: 15
-
+    path: /status
+    port: 13133
 readinessProbe:
   httpGet:
-    path: /
-    port: 14269              # Admin server health endpoint
-  initialDelaySeconds: 10
-  periodSeconds: 10
+    path: /status
+    port: 13133
 ```
 
-**Important:** Health checks must use port 14269 (admin server), not application ports.
+> **Important:** Port 14269 was the v1 admin server health endpoint. In v2, it does not exist.
 
 #### Storage Configuration
 
-**Current:** In-memory storage
+**Current:** In-memory storage (max_traces: 5000)
 - Suitable for: Development, testing, short-term tracing
 - Limitation: Data lost on pod restart
-- Storage size: Limited to available pod memory
 
-**For Production:** Configure external storage (Elasticsearch/Cassandra)
-- Add to config section in values.yaml
-- Enable persistent storage backends
-
-#### Resource Limits
+**For Production:** Switch to Elasticsearch or BadgerDB backend:
 ```yaml
-resources:
-  limits:
-    cpu: 500m
-    memory: 512Mi
-  requests:
-    cpu: 100m
-    memory: 128Mi
+# Elasticsearch example (in userconfig.extensions.jaeger_storage.backends):
+main_store:
+  elasticsearch:
+    server_urls: ["http://elasticsearch:9200"]
+    index_prefix: "jaeger"
+
+# BadgerDB example (persistent on-disk):
+main_store:
+  badger:
+    directory_key: "/badger/key"
+    directory_value: "/badger/data"
+```
+
+#### Security Context
+```yaml
+jaeger:
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 10001       # Matches Jaeger v2 Docker image UID
 ```
 
 ---
@@ -261,10 +335,27 @@ Loki 3.x accepts OTLP logs natively at the `/otlp` endpoint. This requires:
 loki:
   limits_config:
     allow_structured_metadata: true   # Required for OTLP support
+    retention_period: 168h            # 7-day retention policy
 ```
 
 **OTLP Endpoint:** `http://loki.observability.svc.cluster.local:3100/otlp`  
 The OTel Collector's `otlp_http/loki` exporter appends `/v1/logs` automatically.
+
+#### Retention & Compactor
+
+```yaml
+loki:
+  limits_config:
+    retention_period: 168h            # 7 days
+  compactor:
+    retention_enabled: true
+    working_directory: /var/loki/compactor
+    delete_request_store: filesystem
+```
+
+- **retention_period:** Logs older than 168h (7 days) are marked for deletion
+- **compactor:** Background process that enforces retention by deleting expired chunks
+- **working_directory:** Must be `/var/loki/compactor` (default for Loki 3.x)
 
 #### Storage Configuration
 
@@ -394,15 +485,114 @@ curl http://localhost:9090/api/v1/query?query=container_memory_usage_bytes
 
 #### Retention Policy
 
-Default retention is 15 days (Prometheus built-in). Customize via:
+Explicit retention configured:
 ```yaml
 server:
-  retention: "15d"
+  retention: "15d"           # Time-based retention
+  retentionSize: "8GB"       # Size-based retention limit
+```
+
+When both are set, whichever limit is reached first triggers cleanup.
+
+#### Resource Limits
+
+```yaml
+server:
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 2Gi
 ```
 
 #### Remote Write Path
 
 Prometheus → (Remote Write v2) → OTel Collector (`prometheusremotewrite` receiver on port 9090) → New Relic (`otlp_http/newrelic`).
+
+---
+
+### 5. Grafana (`helm-grafana-values.yaml`)
+
+**Purpose:** Unified dashboarding UI with pre-configured datasources for Jaeger, Loki, and Prometheus.
+
+**Chart:** `grafana/grafana` (migrating to `grafana-community/grafana` after Jan 30, 2026)
+
+#### Authentication
+
+Credentials are stored in a Kubernetes secret (not in values file):
+```yaml
+admin:
+  existingSecret: grafana-admin-secret
+```
+
+**Create the secret before deploying:**
+```bash
+kubectl create secret generic grafana-admin-secret \
+  --from-literal=admin-user=admin \
+  --from-literal=admin-password=changeme \
+  -n observability
+```
+
+#### Persistence
+
+```yaml
+persistence:
+  enabled: true
+  storageClassName: local-path
+  size: 1Gi
+```
+
+Persists dashboards, preferences, and annotations across pod restarts.
+
+#### Pre-configured Datasources
+
+```yaml
+datasources:
+  datasources.yaml:
+    datasources:
+      - name: Jaeger
+        type: jaeger
+        url: http://jaeger.observability.svc.cluster.local:16686
+      - name: Loki
+        type: loki
+        url: http://loki.observability.svc.cluster.local:3100
+      - name: Prometheus
+        type: prometheus
+        url: http://prometheus-server.observability.svc.cluster.local:80
+        isDefault: true
+```
+
+#### Access
+
+```bash
+kubectl port-forward -n observability svc/grafana 3000:3000
+# Open http://localhost:3000 — credentials from grafana-admin-secret
+```
+
+---
+
+### 6. Istio Telemetry (`istio-resources.k8s.yaml`)
+
+**Purpose:** Configure Istio service mesh to emit traces to OTel Collector.
+
+```yaml
+apiVersion: telemetry.istio.io/v1
+kind: Telemetry
+metadata:
+  name: mesh-default
+  namespace: istio-system
+spec:
+  tracing:
+    - providers:
+        - name: otel-tracing
+      randomSamplingPercentage: 5     # 5% of requests sampled
+```
+
+> **Sampling:** Reduced from 100% to 5% for production. Higher values generate excessive
+> trace volume. For critical traces, use tail-based sampling in the OTel Collector
+> (requires the `tail_sampling` processor).
 
 ---
 
@@ -453,6 +643,7 @@ cd c:\nagp-casestudy\src\deployment
 # 1. Add Helm repositories
 helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
 helm repo add grafana https://grafana.github.io/helm-charts
+helm repo add grafana-community https://grafana-community.github.io/helm-charts
 helm repo add jaegertracing https://jaegertracing.github.io/helm-charts
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 helm repo update
@@ -460,9 +651,14 @@ helm repo update
 # 2. Create namespace
 kubectl create namespace observability
 
-# 3. Create New Relic secret
+# 3. Create secrets
 kubectl create secret generic newrelic-otel-secret \
   --from-literal=api-key=<YOUR_API_KEY> \
+  -n observability
+
+kubectl create secret generic grafana-admin-secret \
+  --from-literal=admin-user=admin \
+  --from-literal=admin-password=changeme \
   -n observability
 
 # 4. Deploy components
@@ -478,7 +674,13 @@ helm install jaeger jaegertracing/jaeger \
 helm install prometheus prometheus-community/prometheus \
   -f helm-prometheus-values.yaml -n observability
 
-# 5. Verify deployed OTel config has all exporters
+helm install grafana grafana/grafana \
+  -f helm-grafana-values.yaml -n observability
+
+# 5. Apply Istio telemetry
+kubectl apply -f istio-resources.k8s.yaml
+
+# 6. Verify deployed OTel config has all exporters
 kubectl get configmap otel-opentelemetry-collector -n observability -o jsonpath='{.data.relay}'
 ```
 
@@ -497,7 +699,26 @@ helm upgrade loki grafana/loki \
 
 helm upgrade prometheus prometheus-community/prometheus \
   -f helm-prometheus-values.yaml -n observability
+
+helm upgrade grafana grafana/grafana \
+  -f helm-grafana-values.yaml -n observability
 ```
+
+### Automated Setup (`create-cluster.bat`)
+
+The `create-cluster.bat` script automates full cluster provisioning including:
+- k3d cluster creation (1 server + 2 agents)
+- Istio ambient profile installation
+- Helm repo setup and all component installs
+
+**API Key:** The script reads `%NEW_RELIC_API_KEY%` from the environment. Set it before running:
+```bat
+set NEW_RELIC_API_KEY=your-40-char-license-key
+create-cluster.bat
+```
+The script exits with an error if the env var is not set.
+
+**Grafana chart:** Uses `grafana-community/grafana` repo (migrated from `grafana/grafana` after Jan 30, 2026).
 
 ---
 
@@ -567,19 +788,16 @@ kubectl port-forward svc/jaeger -n observability 16686:16686 &
 
 ### Issue: Jaeger pod stuck at 0/1
 
-**Cause:** Health probe misconfiguration
+**Cause:** Health probe misconfiguration (v2 uses port 13133, not v1's 14269)
 
 **Solution:**
 ```bash
 # Check probe configuration
 kubectl get deployment jaeger -n observability -o yaml | grep -A5 "livenessProbe"
 
-# Should show port: 14269
-# If not, patch:
-kubectl patch deployment jaeger -n observability --type='json' -p='[
-  {"op":"replace","path":"/spec/template/spec/containers/0/livenessProbe/httpGet/port","value":14269},
-  {"op":"replace","path":"/spec/template/spec/containers/0/readinessProbe/httpGet/port","value":14269}
-]'
+# Should show port: 13133 (healthcheckv2 extension)
+# If using v1 port 14269, update helm-jaeger-values.yaml to use v2 userconfig format
+# and ensure healthcheckv2 extension is configured on port 13133
 ```
 
 ### Issue: OTel not exporting to New Relic
@@ -656,17 +874,26 @@ $currentNano = [string]([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()) + "00
 
 ### Issue: High memory usage
 
-**Cause:** Large batch sizes or high throughput
+**Cause:** Large batch sizes, high throughput, or missing memory protection
 
 **Solution:**
+The `memory_limiter` processor is already configured as the first processor in all pipelines.
+It will refuse data when memory exceeds `limit_mib` (400MiB). If you still see OOM:
+
 ```yaml
 # In helm-otel-values.yaml, reduce batch sizes:
 processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 400
+    spike_limit_mib: 100
   batch:
     timeout: 5s
     send_batch_size: 256      # was 1024
     send_batch_max_size: 512   # add this too
 ```
+
+Also ensure `GOMEMLIMIT` is set to match `limit_mib`.
 
 ---
 
@@ -812,10 +1039,12 @@ spec:
 
 ### TLS Configuration
 
-Review each component's values for TLS settings:
-- OTel: `tls.insecure: true` (production: use certificates)
-- Jaeger: Similar TLS configuration available
-- Loki: HTTP endpoints (enable TLS in production)
+- **OTel → New Relic:** Secure TLS (default, no `insecure: true`)
+- **OTel → Internal backends:** `tls.insecure: true` (Istio mTLS handles encryption at mesh layer)
+- **Jaeger:** Internal only, HTTP endpoints (Istio mTLS provides transport encryption)
+- **Loki:** Internal only, HTTP endpoints (Istio mTLS provides transport encryption)
+
+> **Note:** For non-Istio deployments, configure explicit TLS certificates for all internal connections.
 
 ---
 
@@ -827,6 +1056,7 @@ Review each component's values for TLS settings:
 | Loki | `grafana/loki:3.6.4` | loki-6.52.0 | ✅ Supported |
 | OTel Collector | `otel/opentelemetry-collector-contrib:0.145.0` | opentelemetry-collector-0.145.0 | ✅ Supported |
 | Prometheus | `quay.io/prometheus/prometheus:v3.9.1` | prometheus-28.9.0 | ✅ Supported |
+| Grafana | `grafana/grafana` | grafana | ✅ Supported (migrating to grafana-community) |
 | New Relic | Cloud (EU endpoint) | N/A | ✅ Connected |
 
 ---
@@ -841,6 +1071,6 @@ Review each component's values for TLS settings:
 
 ---
 
-**Document Version:** 1.0  
+**Document Version:** 2.0 — Production Hardening Update  
 **Last Updated:** February 8, 2026  
 **Maintaining Team:** Observability Engineering

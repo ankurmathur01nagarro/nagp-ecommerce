@@ -1,9 +1,24 @@
 # Prometheus Helm Chart Values - OTel Integration
-# Minimal config with remote_write to OTel Collector
+# Chart: prometheus-community/prometheus (v28.9.0)
+# Ref: https://github.com/prometheus-community/helm-charts/blob/main/charts/prometheus/values.yaml
 
 server:
   extraArgs:
     enable-feature: metadata-wal-records
+
+  # Resource limits (P1-2)
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 2Gi
+
+  # Retention — first-class Helm values (auto-converted to CLI flags)
+  # Ref: https://prometheus.io/docs/prometheus/latest/storage/#operational-aspects
+  retention: "15d"
+  retentionSize: "8GB"
 
   # Remote Write configuration to OTel Collector
   # protobuf_message: OTel prometheusremotewrite receiver (v0.142.0+) only supports Remote Write v2.

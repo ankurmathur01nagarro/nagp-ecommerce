@@ -389,7 +389,7 @@ Write-Host "  Then open: http://localhost:9090"
 Write-Host ""
 Write-Host "Grafana Dashboards (Port 3000):" -ForegroundColor Yellow
 Write-Host "  kubectl port-forward -n observability svc/grafana 3000:3000"
-Write-Host "  Then open: http://localhost:3000  (admin / admin)"
+Write-Host "  Then open: http://localhost:3000  (credentials from grafana-admin-secret)"
 Write-Host ""
 Write-Host "New Relic (Cloud):" -ForegroundColor Yellow
 Write-Host "  Navigate to: https://one.newrelic.com"

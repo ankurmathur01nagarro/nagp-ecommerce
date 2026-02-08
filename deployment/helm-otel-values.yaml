@@ -21,43 +21,55 @@ config:
     prometheusremotewrite:
       endpoint: 0.0.0.0:9090
   processors:
+    # memory_limiter MUST be the first processor in every pipeline
+    # Ref: https://github.com/open-telemetry/opentelemetry-collector/blob/main/processor/memorylimiterprocessor/README.md
+    memory_limiter:
+      check_interval: 1s
+      limit_mib: 400
+      spike_limit_mib: 100
     batch:
       timeout: 5s
       send_batch_size: 1024
   exporters:
-    debug:
-      verbosity: detailed
+    # debug exporter removed from pipelines for production readiness (P0-2)
+    # Uncomment for dev troubleshooting only:
+    # debug:
+    #   verbosity: basic
+    #   sampling_initial: 2
+    #   sampling_thereafter: 500
     otlp_http/newrelic:
       endpoint: https://otlp.eu01.nr-data.net:4318
-      tls:
-        insecure: true
+      # TLS: proper certificate validation for external endpoint (P1-4)
       headers:
         api-key: ${NEW_RELIC_API_KEY}
     otlp_grpc/jaeger:
       endpoint: jaeger.observability.svc.cluster.local:4317
       tls:
-        insecure: true
+        insecure: true  # internal: Istio mTLS encrypts at mesh layer
     otlp_http/loki:
       endpoint: http://loki.observability.svc.cluster.local:3100/otlp
       tls:
-        insecure: true
+        insecure: true  # internal: Istio mTLS encrypts at mesh layer
   service:
     pipelines:
       metrics:
         receivers: [otlp, prometheusremotewrite]
-        processors: [batch]
-        exporters: [otlp_http/newrelic, debug]
+        processors: [memory_limiter, batch]
+        exporters: [otlp_http/newrelic]
       logs:
         receivers: [otlp]
-        processors: [batch]
-        exporters: [otlp_http/loki, otlp_http/newrelic, debug]
+        processors: [memory_limiter, batch]
+        exporters: [otlp_http/loki, otlp_http/newrelic]
       traces:
         receivers: [otlp]
-        processors: [batch]
-        exporters: [otlp_grpc/jaeger, otlp_http/newrelic, debug]
+        processors: [memory_limiter, batch]
+        exporters: [otlp_grpc/jaeger, otlp_http/newrelic]
 extraEnvs:
   - name: NEW_RELIC_API_KEY
     valueFrom:
       secretKeyRef:
         name: newrelic-otel-secret
         key: api-key
+  # GOMEMLIMIT recommended by OTel docs — set to 80% of container memory limit
+  - name: GOMEMLIMIT
+    value: "400MiB"

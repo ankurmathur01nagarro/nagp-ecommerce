@@ -1,9 +1,14 @@
 # Grafana Helm Values for Observability Stack
+# Chart: grafana-community/grafana (migrated from grafana/grafana after Jan 30, 2026)
+# Ref: https://github.com/grafana-community/helm-charts
 # Provides unified UI for Loki (logs), Jaeger (traces), and Prometheus (metrics)
 
-# Disable authentication for local development
-adminUser: admin
-adminPassword: admin
+# Admin credentials via Kubernetes secret (P1-7: do NOT hardcode in values)
+# Create secret: kubectl create secret generic grafana-admin-secret --from-literal=admin-user=admin --from-literal=admin-password=<strong-password> -n observability
+admin:
+  existingSecret: grafana-admin-secret
+  userKey: admin-user
+  passwordKey: admin-password
 
 # Pre-configure all observability data sources
 datasources:
@@ -42,9 +47,11 @@ resources:
 # Single replica for local dev
 replicas: 1
 
-# Persistence disabled for local dev
+# Persistence for dashboards and alerts (P2-3)
 persistence:
-  enabled: false
+  enabled: true
+  storageClassName: local-path
+  size: 1Gi
 
 # Service type
 service:

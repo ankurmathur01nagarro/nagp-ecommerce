@@ -22,6 +22,16 @@ loki:
   # Enable OTLP log ingestion (Loki 3.x feature)
   limits_config:
     allow_structured_metadata: true
+    # Retention: auto-delete logs older than 7 days
+    # Ref: https://grafana.com/docs/loki/latest/operations/storage/retention/
+    retention_period: 168h
+  # Compactor: required for retention to take effect
+  # Ref: https://grafana.com/docs/loki/latest/configure/#compactor
+  compactor:
+    working_directory: /var/loki/compactor
+    retention_enabled: true
+    delete_request_store: filesystem
+    compaction_interval: 10m
 
 # SingleBinary deployment
 singleBinary:
