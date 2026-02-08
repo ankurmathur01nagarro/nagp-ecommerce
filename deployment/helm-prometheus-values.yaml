@@ -6,8 +6,11 @@ server:
     enable-feature: metadata-wal-records
 
   # Remote Write configuration to OTel Collector
+  # protobuf_message: OTel prometheusremotewrite receiver (v0.142.0+) only supports Remote Write v2.
+  # Without this setting Prometheus defaults to v1 (prometheus.WriteRequest) which is rejected.
   remoteWrite:
     - url: http://otel-opentelemetry-collector.observability:9090/api/v1/write
+      protobuf_message: "io.prometheus.write.v2.Request"
 
 alertmanager:
   enabled: false

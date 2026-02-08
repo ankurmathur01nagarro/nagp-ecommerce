@@ -33,6 +33,14 @@ config:
         insecure: true
       headers:
         api-key: ${NEW_RELIC_API_KEY}
+    otlp_grpc/jaeger:
+      endpoint: jaeger.observability.svc.cluster.local:4317
+      tls:
+        insecure: true
+    otlp_http/loki:
+      endpoint: http://loki.observability.svc.cluster.local:3100/otlp
+      tls:
+        insecure: true
   service:
     pipelines:
       metrics:
@@ -42,11 +50,11 @@ config:
       logs:
         receivers: [otlp]
         processors: [batch]
-        exporters: [otlp_http/newrelic, debug]
+        exporters: [otlp_http/loki, otlp_http/newrelic, debug]
       traces:
         receivers: [otlp]
         processors: [batch]
-        exporters: [otlp_http/newrelic, debug]
+        exporters: [otlp_grpc/jaeger, otlp_http/newrelic, debug]
 extraEnvs:
   - name: NEW_RELIC_API_KEY
     valueFrom:

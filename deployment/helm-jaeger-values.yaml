@@ -1,0 +1,115 @@
+# Jaeger Helm Chart Configuration - Jaeger v2
+# 
+# Jaeger v2 (recommended): Uses jaegertracing/jaeger image with v2 tag
+# v1 reached EOL on Dec 31, 2025
+# See: https://www.jaegertracing.io/docs/latest/migration/
+#
+jaeger:
+  enabled: true
+  image:
+    repository: jaegertracing/jaeger
+    tag: "2.14.1"
+    pullPolicy: IfNotPresent
+
+# Deploy as a single all-in-one instance for development/non-enterprise
+deployment:
+  replicas: 1
+  
+livenessProbe:
+  httpGet:
+    path: /
+    port: 14269
+  initialDelaySeconds: 30
+  periodSeconds: 15
+
+readinessProbe:
+  httpGet:
+    path: /
+    port: 14269
+  initialDelaySeconds: 10
+  periodSeconds: 10
+
+service:
+  type: ClusterIP
+  
+  # Collector service - receives traces from OTel
+  collector:
+    port: 14250
+    targetPort: 14250
+    protocol: TCP
+  
+  # Query/UI service
+  query:
+    port: 16686
+    targetPort: 16686
+    protocol: TCP
+  
+  # Zipkin compatibility
+  zipkin:
+    port: 9411
+    targetPort: 9411
+    protocol: TCP
+
+# Pod resources
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+# Storage configuration - in-memory for simplicity (resets on restart)
+# For persistent storage, use environment variables
+env:
+  - name: COLLECTOR_OTLP_ENABLED
+    value: "true"
+  - name: MEMORY_MAX_TRACES
+    value: "5000"
+  # For persistent storage with BadgerDB, uncomment:
+  # - name: BADGER_EPHEMERAL
+  #   value: "false"
+  # - name: BADGER_DIRECTORY_VALUE
+  #   value: /badger/data
+  # - name: BADGER_DIRECTORY_KEY
+  #   value: /badger/key
+
+# Persistence (optional - disabled for in-memory mode)
+persistence:
+  enabled: false
+  # If using BadgerDB storage, enable persistence:
+  # enabled: true
+  # storageClassName: standard
+  # accessMode: ReadWriteOnce
+  # size: 5Gi
+
+# Ingress (disabled by default)
+ingress:
+  enabled: false
+
+# Pod security
+podSecurityContext:
+  runAsNonRoot: false
+  runAsUser: 0
+
+# Container security context
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  capabilities:
+    drop:
+      - ALL
+
+# Node selector
+nodeSelector: {}
+
+# Tolerations
+tolerations: []
+
+# Affinity
+affinity: {}
+
+# Labels
+commonLabels:
+  app: jaeger
+  component: tracing
