@@ -6,6 +6,15 @@ server:
   extraArgs:
     enable-feature: metadata-wal-records
 
+  # Convert classic histograms to Native Histograms with Custom Buckets (NHCB)
+  # at scrape time. Most k8s targets (kubelet, apiserver, scheduler etc.) only
+  # expose classic histograms, but the OTel prometheusremotewrite receiver only
+  # supports native histograms.  Without this, classic series are parsed then
+  # dropped with thousands of "Dropping classic histogram" warnings.
+  # Ref: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#scrape_config
+  global:
+    convert_classic_histograms_to_nhcb: true
+
   # Resource limits (P1-2)
   resources:
     requests:
@@ -26,14 +35,8 @@ server:
   remoteWrite:
     - url: http://otel-opentelemetry-collector.observability:9090/api/v1/write
       protobuf_message: "io.prometheus.write.v2.Request"
-      # Drop high-cardinality classic histogram bucket series from k8s internals.
-      # The prometheusremotewrite receiver only supports native histograms — classic
-      # histogram series (_bucket/_sum/_count) are parsed then dropped, wasting CPU/memory.
-      # These k8s internal metrics are not needed for application observability.
-      write_relabel_configs:
-        - source_labels: [__name__]
-          regex: "(apiserver|scheduler|rest_client|storage_operation|workqueue|service_controller|taint_eviction|volume_operation|root_ca_cert_publisher)_.+_bucket"
-          action: drop
+      # Native histograms are sent automatically with v2 protocol (send_native_histograms is noop).
+      # Classic→NHCB conversion is handled by global.convert_classic_histograms_to_nhcb above.
 
 alertmanager:
   enabled: false
