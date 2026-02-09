@@ -39,9 +39,19 @@ config:
     #   sampling_thereafter: 500
     otlp_http/newrelic:
       endpoint: https://otlp.eu01.nr-data.net:4318
+      timeout: 10s          # default 30s — reduce to fail fast and avoid holding memory
       # TLS: proper certificate validation for external endpoint (P1-4)
       headers:
         api-key: ${NEW_RELIC_API_KEY}
+      sending_queue:
+        enabled: true
+        num_consumers: 4     # parallel export workers
+        queue_size: 500      # bounded queue — prevents unbounded memory growth on backpressure
+      retry_on_failure:
+        enabled: true
+        initial_interval: 5s
+        max_interval: 30s
+        max_elapsed_time: 120s  # stop retrying after 2 min — drop data rather than OOM
     otlp_grpc/jaeger:
       endpoint: jaeger.observability.svc.cluster.local:4317
       tls:

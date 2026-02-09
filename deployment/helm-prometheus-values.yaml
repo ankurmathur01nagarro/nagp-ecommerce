@@ -26,6 +26,13 @@ server:
   remoteWrite:
     - url: http://otel-opentelemetry-collector.observability:9090/api/v1/write
       protobuf_message: "io.prometheus.write.v2.Request"
+      # Drop high-cardinality apiserver histogram buckets — these flood OTel with
+      # classic histogram series (209 drops/5min observed), wasting memory on parsing
+      # even though the receiver ultimately drops them.
+      write_relabel_configs:
+        - source_labels: [__name__]
+          regex: "apiserver_(request_sli_duration|request_duration|response_sizes|watch_events_sizes)_seconds_bucket"
+          action: drop
 
 alertmanager:
   enabled: false
