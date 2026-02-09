@@ -43,14 +43,25 @@ server:
       metadata_config:
         send: false
 
-      # Only remote-write K8s infrastructure and application metrics.
-      # Drop Prometheus self-monitoring (job="prometheus") — 700+ series of
-      # internal engine/tsdb/WAL metrics that are not relevant to K8s or app
-      # observability. This also eliminates the "failedSampleCount" ERROR
-      # caused by summary metrics the OTel receiver cannot translate.
+      # ── write_relabel_configs ──────────────────────────────────────
+      # Applied only to remote write; local Prometheus storage is unaffected.
       write_relabel_configs:
+        # 1. Drop Prometheus self-monitoring (job="prometheus") — 700+ series
+        #    of internal engine/tsdb/WAL metrics not relevant to K8s/app
+        #    observability.
         - source_labels: [job]
           regex: "prometheus"
+          action: drop
+        # 2. Drop all summary-type quantile series from every job.
+        #    The OTel prometheusremotewrite receiver does not support
+        #    METRIC_TYPE_SUMMARY; these are silently discarded, causing a
+        #    stats mismatch that Prometheus logs as a recurring
+        #    "failedSampleCount" ERROR.  All affected metrics
+        #    (go_gc_duration_seconds, apiserver_admission_step_*,
+        #    istio_agent_go_gc_duration_seconds) have histogram equivalents,
+        #    so no data is lost.
+        - source_labels: [quantile]
+          regex: ".+"
           action: drop
 
 alertmanager:
