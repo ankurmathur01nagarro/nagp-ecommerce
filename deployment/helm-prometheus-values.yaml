@@ -38,6 +38,21 @@ server:
       # Native histograms are sent automatically with v2 protocol (send_native_histograms is noop).
       # Classic→NHCB conversion is handled by global.convert_classic_histograms_to_nhcb above.
 
+      # Suppress "metadata_config.send is redundant" WARN — with Remote Write v2,
+      # metadata is always gathered from the WAL and included in every request.
+      metadata_config:
+        send: false
+
+      # Only remote-write K8s infrastructure and application metrics.
+      # Drop Prometheus self-monitoring (job="prometheus") — 700+ series of
+      # internal engine/tsdb/WAL metrics that are not relevant to K8s or app
+      # observability. This also eliminates the "failedSampleCount" ERROR
+      # caused by summary metrics the OTel receiver cannot translate.
+      write_relabel_configs:
+        - source_labels: [job]
+          regex: "prometheus"
+          action: drop
+
 alertmanager:
   enabled: false
 
