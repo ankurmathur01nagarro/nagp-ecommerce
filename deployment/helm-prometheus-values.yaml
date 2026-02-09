@@ -52,16 +52,20 @@ server:
         - source_labels: [job]
           regex: "prometheus"
           action: drop
-        # 2. Drop all summary-type quantile series from every job.
+        # 2. Drop all summary-type metrics from remote write.
         #    The OTel prometheusremotewrite receiver does not support
         #    METRIC_TYPE_SUMMARY; these are silently discarded, causing a
-        #    stats mismatch that Prometheus logs as a recurring
-        #    "failedSampleCount" ERROR.  All affected metrics
-        #    (go_gc_duration_seconds, apiserver_admission_step_*,
-        #    istio_agent_go_gc_duration_seconds) have histogram equivalents,
-        #    so no data is lost.
+        #    RW v2 stats mismatch that Prometheus logs as a recurring
+        #    "failedSampleCount" ERROR.  All affected metrics have
+        #    histogram equivalents, so no observability data is lost.
+        #    Rule (a): drop quantile-labeled series (catches any summary):
         - source_labels: [quantile]
           regex: ".+"
+          action: drop
+        #    Rule (b): drop _sum/_count companions of known summary
+        #    families (these lack a quantile label so rule (a) misses them):
+        - source_labels: [__name__]
+          regex: "(go_gc_duration_seconds|apiserver_admission_step_admission_duration_seconds_summary|istio_agent_go_gc_duration_seconds)(_sum|_count)?"
           action: drop
 
 alertmanager:
