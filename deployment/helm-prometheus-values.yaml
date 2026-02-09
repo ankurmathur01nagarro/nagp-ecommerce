@@ -26,12 +26,13 @@ server:
   remoteWrite:
     - url: http://otel-opentelemetry-collector.observability:9090/api/v1/write
       protobuf_message: "io.prometheus.write.v2.Request"
-      # Drop high-cardinality apiserver histogram buckets — these flood OTel with
-      # classic histogram series (209 drops/5min observed), wasting memory on parsing
-      # even though the receiver ultimately drops them.
+      # Drop high-cardinality classic histogram bucket series from k8s internals.
+      # The prometheusremotewrite receiver only supports native histograms — classic
+      # histogram series (_bucket/_sum/_count) are parsed then dropped, wasting CPU/memory.
+      # These k8s internal metrics are not needed for application observability.
       write_relabel_configs:
         - source_labels: [__name__]
-          regex: "apiserver_(request_sli_duration|request_duration|response_sizes|watch_events_sizes)_seconds_bucket"
+          regex: "(apiserver|scheduler|rest_client|storage_operation|workqueue|service_controller|taint_eviction|volume_operation|root_ca_cert_publisher)_.+_bucket"
           action: drop
 
 alertmanager:
