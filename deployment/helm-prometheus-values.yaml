@@ -38,14 +38,11 @@ server:
       # ── write_relabel_configs ──────────────────────────────────────
       # Applied only to remote write; local Prometheus storage is unaffected.
       write_relabel_configs:
-        # 1. Drop all Kubernetes infrastructure jobs.
-        #    Kiali handles Istio traffic visualization; k8s metrics are not
-        #    needed in the pipeline. Drops: prometheus self-monitoring,
-        #    kubernetes-nodes, kubernetes-api-servers, kubernetes-service-endpoints,
-        #    kubernetes-pods, and kube-state-metrics-related jobs.
-        #    Local Prometheus retention is unaffected.
+        # 1. Drop all Kubernetes/infra jobs from remote_write → Alloy → New Relic.
+        #    Still scraped locally, but not forwarded. If you also want to stop
+        #    scraping, disable the relevant scrape jobs in Prometheus chart values.
         - source_labels: [job]
-          regex: "prometheus|kubernetes-nodes|kubernetes-api-servers|kubernetes-service-endpoints|kubernetes-pods"
+          regex: "prometheus|kubernetes-.*|kube-.*|kubelet.*|apiserver|coredns|node-exporter"
           action: drop
 
 alertmanager:
@@ -62,6 +59,26 @@ prometheus-node-exporter:
 
 kube-state-metrics:
   enabled: false
+
+# Disable all bundled Kubernetes scrape jobs (we only keep remote_write to Alloy for app targets)
+kubeProxy:
+  enabled: false
+
+kubelet:
+  enabled: false
+
+kubeScheduler:
+  enabled: false
+
+kubeControllerManager:
+  enabled: false
+
+coreDns:
+  enabled: false
+
+serverFiles:
+  prometheus.yml:
+    scrape_configs: []  # remove default scrape jobs entirely; only custom ones can be added via extraScrapeConfigs
 
 rbac:
   create: true
