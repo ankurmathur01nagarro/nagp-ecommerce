@@ -50,7 +50,7 @@ kube-state-metrics:
 
 # Full config override to disable scraping and only remote_write to Alloy.
 serverFiles:
-  prometheus.yml: |
+  prometheus.yml:
     global:
       evaluation_interval: 30s
       scrape_interval: 30s
