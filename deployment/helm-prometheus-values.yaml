@@ -32,18 +32,28 @@ server:
   # (no protobuf_message override needed — unlike the old OTel prometheusremotewrite
   # receiver which required v2).
   # Endpoint path changed: /api/v1/write → /api/v1/metrics/write (Alloy convention).
-  remoteWrite:
-    - url: http://alloy.observability:9090/api/v1/metrics/write
+  # Full config override to disable scraping and only remote_write to Alloy.
+  serverFiles:
+    prometheus.yml: |
+      global:
+        evaluation_interval: 30s
+        scrape_interval: 30s
+        scrape_timeout: 10s
+        convert_classic_histograms_to_nhcb: true
 
-      # ── write_relabel_configs ──────────────────────────────────────
-      # Applied only to remote write; local Prometheus storage is unaffected.
-      write_relabel_configs:
-        # 1. Drop all Kubernetes/infra jobs from remote_write → Alloy → New Relic.
-        #    Still scraped locally, but not forwarded. If you also want to stop
-        #    scraping, disable the relevant scrape jobs in Prometheus chart values.
-        - source_labels: [job]
-          regex: "prometheus|kubernetes-.*|kube-.*|kubelet.*|apiserver|coredns|node-exporter"
-          action: drop
+      alerting:
+        alertmanagers: []
+
+      rule_files: []
+
+      scrape_configs: []
+
+      remote_write:
+        - url: http://alloy.observability:9090/api/v1/metrics/write
+          write_relabel_configs:
+            - source_labels: [job]
+              regex: "prometheus|kubernetes-.*|kube-.*|kubelet.*|apiserver|coredns|node-exporter"
+              action: drop
 
 alertmanager:
   enabled: false
@@ -59,26 +69,6 @@ prometheus-node-exporter:
 
 kube-state-metrics:
   enabled: false
-
-# Disable all bundled Kubernetes scrape jobs (we only keep remote_write to Alloy for app targets)
-kubeProxy:
-  enabled: false
-
-kubelet:
-  enabled: false
-
-kubeScheduler:
-  enabled: false
-
-kubeControllerManager:
-  enabled: false
-
-coreDns:
-  enabled: false
-
-serverFiles:
-  prometheus.yml:
-    scrape_configs: []  # remove default scrape jobs entirely; only custom ones can be added via extraScrapeConfigs
 
 rbac:
   create: true
