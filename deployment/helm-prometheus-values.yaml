@@ -48,9 +48,11 @@ prometheus-node-exporter:
 kube-state-metrics:
   enabled: false
 
-# Full config override to disable scraping and only remote_write to Alloy.
+# Disable all built-in scrapeConfigs and replace the generated config entirely.
+scrapeConfigs: {}
+
 serverFiles:
-  prometheus.yml: |-
+  prometheus.yml:
     global:
       evaluation_interval: 30s
       scrape_interval: 30s
