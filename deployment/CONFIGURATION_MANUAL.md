@@ -2,7 +2,7 @@
 
 ## Overview
 
-This manual documents the complete configuration of the observability stack including OTel Collector, Jaeger, Loki, Prometheus, and New Relic integration.
+This manual documents the complete configuration of the observability stack including Grafana Alloy (OTel Collector replacement), Jaeger, Loki, Prometheus, and New Relic integration.
 
 **Deployment Date:** February 8, 2026  
 **Status:** ✅ Production Ready  
@@ -15,7 +15,7 @@ This manual documents the complete configuration of the observability stack incl
 ```
 Applications (OTLP Instrumented)
             ↓
-    OTel Collector (4317/gRPC, 4318/HTTP)
+    Grafana Alloy (4317/gRPC, 4318/HTTP)
             ↓
     ┌───────┼───────┬──────────┐
     ↓       ↓       ↓          ↓
@@ -25,150 +25,120 @@ Applications (OTLP Instrumented)
 
 ### Data Flow Pipelines
 
-**Configured (per `helm-otel-values.yaml`):**
+**Configured (per `helm-alloy-values.yaml`):**
 
-| Pipeline | Receivers | Processors | Exporters |
-|----------|-----------|-----------|----------|
-| **Traces** | otlp | memory_limiter, batch | otlp_grpc/jaeger, otlp_http/newrelic |
-| **Logs** | otlp | memory_limiter, batch | otlp_http/loki, otlp_http/newrelic |
-| **Metrics** | otlp, prometheusremotewrite | memory_limiter, batch | otlp_http/newrelic |
+| Pipeline | Alloy Receiver | Alloy Processors | Alloy Exporters |
+|----------|----------------|-------------------|------------------|
+| **Traces** | `otelcol.receiver.otlp` | `memory_limiter`, `batch "traces"` | `otelcol.exporter.otlp "jaeger"`, `otelcol.exporter.otlphttp "newrelic"` |
+| **Logs** | `otelcol.receiver.otlp` | `memory_limiter`, `batch "logs"` | `otelcol.exporter.otlphttp "loki"`, `otelcol.exporter.otlphttp "newrelic"` |
+| **Metrics** | `otelcol.receiver.otlp`, `prometheus.receive_http` → `otelcol.receiver.prometheus` | `memory_limiter`, `batch "metrics"` | `otelcol.exporter.otlphttp "newrelic"` |
 
-> **Note:** The `debug` exporter is commented out in all pipelines for production.
-> Re-enable temporarily for troubleshooting by uncommenting in `helm-otel-values.yaml`.
+> **Note:** Alloy uses a component-based config syntax (not YAML pipelines). Each signal
+> type routes through its own `batch` processor instance. The config lives in
+> `helm-alloy-values.yaml` under `alloy.configMap.content`.
 
-> **Note:** The OTel Helm chart merges custom values with its defaults. After any `helm upgrade`, verify the deployed configmap with:
+> **Note:** After ArgoCD sync, verify the deployed config with:
 > ```bash
-> kubectl get configmap otel-opentelemetry-collector -n observability -o jsonpath='{.data.relay}'
-> ```
-> Ensure `otlp_grpc/jaeger` and `otlp_http/loki` exporters appear in the deployed config. If missing, re-run:
-> ```bash
-> helm upgrade otel open-telemetry/opentelemetry-collector -f helm-otel-values.yaml -n observability
+> kubectl get configmap alloy -n observability -o jsonpath='{.data.config\.alloy}'
 > ```
 
-> **Exporter Naming (v0.145.0+):** The old aliases `otlphttp` and `otlp` are deprecated.
-> Use `otlp_http` (HTTP) and `otlp_grpc` (gRPC) respectively. The dedicated `loki`
-> exporter was **removed** from otel-collector-contrib 0.145.0 — use `otlp_http` to
-> Loki's native OTLP endpoint (`/otlp`) instead.
+> **Prometheus bridge:** The old OTel `prometheusremotewrite` receiver is replaced by
+> Alloy's native `prometheus.receive_http` → `otelcol.receiver.prometheus` bridge.
+> The endpoint path changed from `/api/v1/write` to `/api/v1/metrics/write`.
 
 ---
 
 ## Component Configurations
 
-### 1. OpenTelemetry Collector (`helm-otel-values.yaml`)
+### 1. Grafana Alloy (`helm-alloy-values.yaml`)
 
-**Purpose:** Central data pipeline that receives OTLP signals and exports to all backends.
+**Purpose:** Central telemetry pipeline that receives OTLP signals, bridges Prometheus
+remote write, and exports to all backends. Replaces the OpenTelemetry Collector.
 
-**Image:** `otel/opentelemetry-collector-contrib:0.145.0`  
-**Chart:** `opentelemetry-collector-0.145.0`
+**Image:** `grafana/alloy:v1.13.0` (bundles OTel Collector v0.142.0 internally)
+**Chart:** `alloy-1.6.0` (from `grafana.github.io/helm-charts`)
+**Stability Level:** `public-preview` (required for `otelcol.receiver.prometheus` bridge)
 
-#### Receivers Configuration
-```yaml
-receivers:
-  otlp:
-    protocols:
-      grpc:
-        endpoint: 0.0.0.0:4317      # OTLP gRPC receiver (apps send here)
-      http:
-        endpoint: 0.0.0.0:4318      # OTLP HTTP receiver (apps send here)
-  prometheusremotewrite:
-    endpoint: 0.0.0.0:9090          # Receive Prometheus scrapes
-```
+#### Component-Based Config (Alloy syntax)
+
+Alloy uses a component graph instead of YAML pipelines. The config is defined in
+`helm-alloy-values.yaml` under `alloy.configMap.content`. Key component types:
+
+| Component | Purpose |
+|-----------|---------|
+| `otelcol.receiver.otlp "default"` | Receives traces, logs, metrics via gRPC :4317 / HTTP :4318 |
+| `prometheus.receive_http "default"` | Receives Prometheus remote write on :9090 `/api/v1/metrics/write` |
+| `otelcol.receiver.prometheus "default"` | Bridges Prometheus metrics → OTel format |
+| `otelcol.processor.memory_limiter "default"` | Prevents OOM (limit_mib: 400) |
+| `otelcol.processor.batch "traces"/"logs"/"metrics"` | Per-signal batching (timeout: 5s, batch: 1024) |
+| `otelcol.exporter.otlp "jaeger"` | Sends traces to Jaeger via gRPC |
+| `otelcol.exporter.otlphttp "loki"` | Sends logs to Loki via OTLP HTTP |
+| `otelcol.exporter.otlphttp "newrelic"` | Sends all signals to New Relic |
 
 **Application Configuration to Send Data:**
 ```
-gRPC:  http://otel-opentelemetry-collector.observability:4317
-HTTP:  http://otel-opentelemetry-collector.observability:4318
+gRPC:  http://alloy.observability:4317
+HTTP:  http://alloy.observability:4318
 ```
 
-#### Exporters Configuration
+#### Exporters
 
-**Jaeger OTLP gRPC Exporter**
-```yaml
-otlp_grpc/jaeger:
-  endpoint: jaeger.observability.svc.cluster.local:4317
-  tls:
-    insecure: true
+**Jaeger OTLP gRPC Exporter** (`otelcol.exporter.otlp "jaeger"`)
+- **Endpoint:** `jaeger.observability.svc.cluster.local:4317`
+- **Protocol:** OTLP gRPC
+- **TLS:** `insecure = true` (Istio mTLS at mesh layer)
+
+**Loki OTLP HTTP Exporter** (`otelcol.exporter.otlphttp "loki"`)
+- **Endpoint:** `http://loki.observability.svc.cluster.local:3100/otlp`
+- **Protocol:** OTLP HTTP
+- **Note:** Loki 3.x native OTLP endpoint (exporter appends `/v1/logs` automatically)
+
+**New Relic OTLP Exporter** (`otelcol.exporter.otlphttp "newrelic"`)
+- **Endpoint:** `https://otlp.eu01.nr-data.net:4318`
+- **Authentication:** API key from Kubernetes secret via `sys.env("NEW_RELIC_API_KEY")`
+- **TLS:** Secure (default — required for external endpoints)
+- **Queue:** `queue_size: 500`, `num_consumers: 4` (bounded, prevents memory growth)
+- **Retry:** `max_elapsed_time: 120s` (drop data rather than OOM after 2 min)
+
+#### Processors
+
+**Memory Limiter** (`otelcol.processor.memory_limiter "default"`):
+- Must be the first processor in every pipeline
+- `limit_mib: 400`, `spike_limit_mib: 100`
+- Works with `GOMEMLIMIT=400MiB` env var
+
+**Batch Processors** (per-signal: `"traces"`, `"logs"`, `"metrics"`):
+- `timeout: 5s`, `send_batch_size: 1024`
+- Each routes to its own set of exporters
+
+#### Prometheus Remote Write Bridge
+
+Replaces the OTel Collector's `prometheusremotewrite` YAML receiver with Alloy's native bridge:
 ```
-- **Purpose:** Send traces to Jaeger
-- **Protocol:** OTLP gRPC (named `otlp_grpc`, not the deprecated `otlp` alias)
-- **Port:** 4317
-
-**Loki OTLP HTTP Exporter**
-```yaml
-otlp_http/loki:
-  endpoint: http://loki.observability.svc.cluster.local:3100/otlp
-  tls:
-    insecure: true
-```
-- **Purpose:** Send logs to Loki via native OTLP endpoint (Loki 3.x)
-- **Protocol:** OTLP HTTP (named `otlp_http`, not the deprecated `otlphttp` alias)
-- **Port:** 3100, path `/otlp` (exporter appends `/v1/logs` automatically)
-- **Note:** The dedicated `loki` exporter was removed from otel-collector-contrib 0.145.0
-
-**New Relic OTLP Exporter**
-```yaml
-otlp_http/newrelic:
-  endpoint: https://otlp.eu01.nr-data.net:4318
-  headers:
-    api-key: ${NEW_RELIC_API_KEY}
-```
-- **Purpose:** Send all signals (traces, logs, metrics) to New Relic cloud
-- **Region:** EU (eu01)
-- **Authentication:** API key from Kubernetes secret
-- **TLS:** Uses default secure TLS (no `insecure: true` — required for external endpoints)
-
-#### Processors Configuration
-
-```yaml
-processors:
-  memory_limiter:
-    check_interval: 1s
-    limit_mib: 400
-    spike_limit_mib: 100
-  batch:
-    timeout: 5s
-    send_batch_size: 1024
+Prometheus → prometheus.receive_http (:9090) → otelcol.receiver.prometheus → memory_limiter → batch "metrics" → newrelic
 ```
 
-- **memory_limiter:** Must be the **first processor** in every pipeline. Prevents OOM by refusing data when memory exceeds `limit_mib`. Works with `GOMEMLIMIT` env var.
-- **batch:** Groups telemetry data before export to reduce network overhead.
+**Key change:** The endpoint path changed from `/api/v1/write` to `/api/v1/metrics/write`.
+Update `helm-prometheus-values.yaml` accordingly.
 
-#### Service Pipelines
-
-```yaml
-service:
-  pipelines:
-    traces:
-      receivers: [otlp]
-      processors: [memory_limiter, batch]
-      exporters: [otlp_grpc/jaeger, otlp_http/newrelic]
-    logs:
-      receivers: [otlp]
-      processors: [memory_limiter, batch]
-      exporters: [otlp_http/loki, otlp_http/newrelic]
-    metrics:
-      receivers: [otlp, prometheusremotewrite]
-      processors: [memory_limiter, batch]
-      exporters: [otlp_http/newrelic]
-```
-
-> **Note:** The `debug` exporter has been removed from all pipelines for production.
-> It can be re-enabled temporarily for troubleshooting by uncommenting in `helm-otel-values.yaml`.
+**v2 protocol no longer needed:** The old OTel `prometheusremotewrite` receiver required
+`protobuf_message: "io.prometheus.write.v2.Request"`. Alloy's native `prometheus.receive_http`
+uses standard Prometheus v1 protocol — no `protobuf_message` override required.
 
 #### Environment Variables
 ```yaml
-extraEnvs:
-  - name: NEW_RELIC_API_KEY
-    valueFrom:
-      secretKeyRef:
-        name: newrelic-otel-secret
-        key: api-key
-  - name: GOMEMLIMIT
-    value: "400MiB"
+alloy:
+  extraEnv:
+    - name: NEW_RELIC_API_KEY
+      valueFrom:
+        secretKeyRef:
+          name: newrelic-otel-secret
+          key: api-key
+    - name: GOMEMLIMIT
+      value: "400MiB"
 ```
 
 - **GOMEMLIMIT:** Sets the Go runtime's soft memory limit. Should match `memory_limiter.limit_mib`.
-  Prevents GC pressure spikes and works alongside the `memory_limiter` processor.
 
 **Secret Creation:**
 ```bash
@@ -424,29 +394,26 @@ singleBinary:
 
 #### Key Configuration
 
-**Remote Write to OTel Collector (v2):**
+**Remote Write to Grafana Alloy:**
 ```yaml
 server:
   extraArgs:
     enable-feature: metadata-wal-records
   remoteWrite:
-    - url: http://otel-opentelemetry-collector.observability:9090/api/v1/write
-      protobuf_message: "io.prometheus.write.v2.Request"
+    - url: http://alloy.observability:9090/api/v1/metrics/write
 ```
 
-This sends Prometheus metrics via **Remote Write v2** protocol to the OTel Collector's
-`prometheusremotewrite` receiver, which then forwards to New Relic.
+This sends Prometheus metrics via standard **Remote Write v1** protocol to Alloy's
+`prometheus.receive_http` component, which bridges them into OTel format via
+`otelcol.receiver.prometheus` and forwards to New Relic.
 
-> **Important:** The `protobuf_message` setting is required. The OTel `prometheusremotewrite`
-> receiver (v0.142.0+) **only supports Remote Write v2**. Without this setting, Prometheus
-> defaults to v1 (`prometheus.WriteRequest`) which the receiver rejects with
-> `"unsupported proto version"` warnings.
->
-> **Compatibility:** OTel Collector ≥0.142.0 requires Prometheus ≥3.8.0 for Remote Write v2.
+> **Note:** The `protobuf_message: "io.prometheus.write.v2.Request"` setting is no longer
+> needed. The old OTel `prometheusremotewrite` receiver required v2; Alloy's native
+> `prometheus.receive_http` uses standard v1 protocol.
 
-**Enabled components:**
-- `prometheus-node-exporter: enabled: true`
-- `kube-state-metrics: enabled: true`
+**Disabled components (k8s metrics not in pipeline — Kiali handles Istio traffic):**
+- `prometheus-node-exporter: enabled: false`
+- `kube-state-metrics: enabled: false`
 - `alertmanager: enabled: false`
 - `prometheus-pushgateway: enabled: false`
 
@@ -509,7 +476,7 @@ server:
 
 #### Remote Write Path
 
-Prometheus → (Remote Write v2) → OTel Collector (`prometheusremotewrite` receiver on port 9090) → New Relic (`otlp_http/newrelic`).
+Prometheus → (Remote Write v1) → Alloy (`prometheus.receive_http` on port 9090 `/api/v1/metrics/write`) → `otelcol.receiver.prometheus` (Prom→OTel bridge) → `otelcol.processor.memory_limiter` → `otelcol.processor.batch "metrics"` → New Relic (`otelcol.exporter.otlphttp "newrelic"`).
 
 ---
 
@@ -575,7 +542,7 @@ kubectl port-forward -n observability svc/grafana 3000:3000
 
 ### 6. Istio Telemetry (`istio-resources.k8s.yaml`)
 
-**Purpose:** Configure Istio service mesh to emit traces to OTel Collector.
+**Purpose:** Configure Istio service mesh to emit traces to Grafana Alloy.
 
 ```yaml
 apiVersion: telemetry.istio.io/v1
@@ -593,6 +560,7 @@ spec:
 > **Sampling:** Reduced from 100% to 5% for production. Higher values generate excessive
 > trace volume. For critical traces, use tail-based sampling in the OTel Collector
 > (requires the `tail_sampling` processor).
+> In Alloy, this would be `otelcol.processor.tail_sampling`.
 
 ---
 
@@ -645,7 +613,7 @@ All observability components are managed via ArgoCD using the **App-of-Apps** pa
 |------|-------------|-----------|
 | 0 | istio-telemetry | istio-system |
 | 1 | loki, jaeger, prometheus | observability |
-| 2 | otel (OpenTelemetry Collector) | observability |
+| 2 | alloy (Grafana Alloy) | observability |
 | 3 | grafana | observability |
 | 5 | nagp-ecom-ui, nagp-ecom-api | nagp-ecom |
 
@@ -666,7 +634,7 @@ Helm chart apps use `spec.sources` (plural) with two sources:
 1. **Helm chart** from the external repo (e.g., `https://grafana.github.io/helm-charts`)
 2. **Git repo** referenced via `ref: values` — provides values files from `deployment/helm-*-values.yaml`
 
-Example: ArgoCD resolves `$values/deployment/helm-otel-values.yaml` to the Git repo root.
+Example: ArgoCD resolves `$values/deployment/helm-alloy-values.yaml` to the Git repo root.
 
 ### Pre-requisites (kept in `create-cluster.bat`)
 
@@ -696,13 +664,13 @@ helm install argocd argo/argo-cd -n argocd \
 Since all observability components are ArgoCD-managed, updates are done via Git:
 
 ```bash
-# Edit the values file (e.g., helm-otel-values.yaml)
+# Edit the values file (e.g., helm-alloy-values.yaml)
 # Commit and push to Git
-git add . && git commit -m "update otel config" && git push
+git add . && git commit -m "update alloy config" && git push
 
 # ArgoCD auto-syncs the changes (selfHeal + prune enabled)
 # To force immediate sync:
-argocd app sync otel
+argocd app sync alloy
 ```
 
 ### Manual Helm Operations (emergency only)
@@ -710,8 +678,8 @@ argocd app sync otel
 If ArgoCD is down or for debugging, you can still use Helm directly:
 
 ```bash
-# Verify deployed OTel config has all exporters
-kubectl get configmap otel-opentelemetry-collector -n observability -o jsonpath='{.data.relay}'
+# Verify deployed Alloy config
+kubectl get configmap alloy -n observability -o jsonpath='{.data.config\.alloy}'
 ```
 
 ### Automated Setup (`create-cluster.bat`)
@@ -748,8 +716,8 @@ kubectl get pods -n observability
 # Expected output:
 # jaeger-xxxx                 1/1 Running
 # loki-0                      2/2 Running    (loki + sidecar)
-# otel-opentelemetry-xxxx     1/1 Running
-# prometheus-server-xxxx      2/2 Running    (server + config-reloader)
+# alloy-xxxx                  1/1 Running
+# prometheus-server-xxxx      1/1 Running    (server only, kube-state-metrics disabled)
 ```
 
 ### 2. Service Connectivity
@@ -766,8 +734,8 @@ kubectl run -it --rm debug --image=busybox -n observability -- sh
 ### 3. Logs Verification
 
 ```bash
-# OTel Collector logs
-kubectl logs -n observability -l app.kubernetes.io/name=opentelemetry-collector
+# Alloy logs
+kubectl logs -n observability -l app.kubernetes.io/name=alloy
 
 # Jaeger logs (should show "Everything is ready")
 kubectl logs -n observability -l app.kubernetes.io/name=jaeger
@@ -789,7 +757,7 @@ kubectl port-forward svc/jaeger -n observability 16686:16686 &
 
 # 3. If no data yet, manually send test data or:
 #    - Ensure your app is instrumented with OTel SDK
-#    - Configure app to send to http://otel-collector.observability:4317
+#    - Configure app to send to http://alloy.observability:4317
 #    - Generate some activity in your app
 
 # 4. Verify in New Relic
@@ -815,7 +783,7 @@ kubectl get deployment jaeger -n observability -o yaml | grep -A5 "livenessProbe
 # and ensure healthcheckv2 extension is configured on port 13133
 ```
 
-### Issue: OTel not exporting to New Relic
+### Issue: Alloy not exporting to New Relic
 
 **Cause:** Invalid API key or network issue
 
@@ -825,7 +793,7 @@ kubectl get deployment jaeger -n observability -o yaml | grep -A5 "livenessProbe
 kubectl get secret newrelic-otel-secret -n observability --show-literals
 
 # Check logs for errors
-kubectl logs -n observability -l app.kubernetes.io/name=opentelemetry-collector | grep -i "newrelic\|error"
+kubectl logs -n observability -l app.kubernetes.io/name=alloy | grep -i "newrelic\|error"
 
 # Recreate secret if needed
 kubectl delete secret newrelic-otel-secret -n observability
@@ -833,8 +801,8 @@ kubectl create secret generic newrelic-otel-secret \
   --from-literal=api-key=<YOUR_API_KEY> \
   -n observability
 
-# Restart OTel
-kubectl rollout restart deployment/otel-opentelemetry-collector -n observability
+# Restart Alloy
+kubectl rollout restart deployment/alloy -n observability
 ```
 
 ### Issue: Loki disk full
@@ -854,25 +822,19 @@ kubectl edit pvc storage-loki-0 -n observability
 # Change storage: 20Gi
 ```
 
-### Issue: Prometheus remote_write "unsupported proto version" warnings
+### Issue: Prometheus remote write not reaching Alloy
 
-**Cause:** The OTel `prometheusremotewrite` receiver (v0.142.0+) only supports Remote Write v2.
-Prometheus defaults to v1 (`prometheus.WriteRequest`) which is rejected.
+**Cause:** Alloy's `prometheus.receive_http` listens on `/api/v1/metrics/write` (port 9090),
+not the old OTel path `/api/v1/write`.
 
 **Solution:**
 ```yaml
-# In helm-prometheus-values.yaml, add protobuf_message:
+# In helm-prometheus-values.yaml, use the Alloy endpoint:
 server:
   remoteWrite:
-    - url: http://otel-opentelemetry-collector.observability:9090/api/v1/write
-      protobuf_message: "io.prometheus.write.v2.Request"
+    - url: http://alloy.observability:9090/api/v1/metrics/write
 ```
-Then upgrade and restart:
-```bash
-helm upgrade prometheus prometheus-community/prometheus \
-  -f helm-prometheus-values.yaml -n observability
-kubectl rollout restart deployment/prometheus-server -n observability
-```
+Then commit and push; ArgoCD handles the sync.
 
 ### Issue: Loki rejects logs with "timestamp too old"
 
@@ -895,17 +857,12 @@ $currentNano = [string]([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()) + "00
 The `memory_limiter` processor is already configured as the first processor in all pipelines.
 It will refuse data when memory exceeds `limit_mib` (400MiB). If you still see OOM:
 
-```yaml
-# In helm-otel-values.yaml, reduce batch sizes:
-processors:
-  memory_limiter:
-    check_interval: 1s
-    limit_mib: 400
-    spike_limit_mib: 100
-  batch:
-    timeout: 5s
-    send_batch_size: 256      # was 1024
-    send_batch_max_size: 512   # add this too
+In `helm-alloy-values.yaml`, reduce batch sizes in the `alloy.configMap.content` block:
+```
+otelcol.processor.batch "traces" {
+  timeout         = "5s"
+  send_batch_size = 256      // was 1024
+}
 ```
 
 Also ensure `GOMEMLIMIT` is set to match `limit_mib`.
@@ -914,16 +871,17 @@ Also ensure `GOMEMLIMIT` is set to match `limit_mib`.
 
 ## Performance Tuning
 
-### OTel Collector
+### OTel/Alloy Pipeline
 
-```yaml
-# For high throughput:
-processors:
-  batch:
-    timeout: 1s
-    send_batch_size: 2048
-    send_batch_max_size: 4096
+In `helm-alloy-values.yaml`, adjust batch sizes in the `alloy.configMap.content` block:
+```
+// For high throughput:
+otelcol.processor.batch "traces" {
+  timeout         = "1s"
+  send_batch_size = 2048
+}
 
+// In alloy.resources:
 resources:
   limits:
     cpu: 1000m          # Increase from 500m
@@ -1039,7 +997,7 @@ spec:
   - from:
     - podSelector:
         matchLabels:
-          app: otel
+          app: alloy
     ports:
     - protocol: TCP
       port: 4317
@@ -1054,8 +1012,8 @@ spec:
 
 ### TLS Configuration
 
-- **OTel → New Relic:** Secure TLS (default, no `insecure: true`)
-- **OTel → Internal backends:** `tls.insecure: true` (Istio mTLS handles encryption at mesh layer)
+- **Alloy → New Relic:** Secure TLS (default, no `insecure: true`)
+- **Alloy → Internal backends:** `insecure = true` (Istio mTLS handles encryption at mesh layer)
 - **Jaeger:** Internal only, HTTP endpoints (Istio mTLS provides transport encryption)
 - **Loki:** Internal only, HTTP endpoints (Istio mTLS provides transport encryption)
 
@@ -1069,7 +1027,7 @@ spec:
 |-----------|-------|---------------|--------|
 | Jaeger | `jaegertracing/jaeger:2.14.1` | jaeger-4.4.6 | ✅ Supported |
 | Loki | `grafana/loki:3.6.4` | loki-6.52.0 | ✅ Supported (official `grafana` repo) |
-| OTel Collector | `otel/opentelemetry-collector-contrib:0.145.0` | opentelemetry-collector-0.145.0 | ✅ Supported |
+| Grafana Alloy | `grafana/alloy:v1.13.0` | alloy-1.6.0 | ✅ Supported (replaces OTel Collector) |
 | Prometheus | `quay.io/prometheus/prometheus:v3.9.1` | prometheus-28.9.0 | ✅ Supported |
 | Grafana | `grafana/grafana` | grafana | ✅ Supported (`grafana-community` repo) |
 | New Relic | Cloud (EU endpoint) | N/A | ✅ Connected |
@@ -1080,6 +1038,7 @@ spec:
 
 - **Jaeger:** https://www.jaegertracing.io/docs/
 - **Loki:** https://grafana.com/docs/loki/
+- **Grafana Alloy:** https://grafana.com/docs/alloy/latest/
 - **OpenTelemetry:** https://opentelemetry.io/docs/
 - **Prometheus:** https://prometheus.io/docs/
 - **New Relic:** https://docs.newrelic.com/

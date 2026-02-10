@@ -1,4 +1,4 @@
-# Prometheus Helm Chart Values - OTel Integration
+# Prometheus Helm Chart Values - Alloy Integration
 # Chart: prometheus-community/prometheus (v28.9.0)
 # Ref: https://github.com/prometheus-community/helm-charts/blob/main/charts/prometheus/values.yaml
 
@@ -7,10 +7,8 @@ server:
     enable-feature: metadata-wal-records
 
   # Convert classic histograms to Native Histograms with Custom Buckets (NHCB)
-  # at scrape time. Most k8s targets (kubelet, apiserver, scheduler etc.) only
-  # expose classic histograms, but the OTel prometheusremotewrite receiver only
-  # supports native histograms.  Without this, classic series are parsed then
-  # dropped with thousands of "Dropping classic histogram" warnings.
+  # at scrape time. Useful for any remaining scrape targets that expose classic
+  # histograms. Harmless when no classic-only targets remain.
   # Ref: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#scrape_config
   global:
     convert_classic_histograms_to_nhcb: true
@@ -29,49 +27,25 @@ server:
   retention: "15d"
   retentionSize: "8GB"
 
-  # Remote Write configuration to OTel Collector
-  # protobuf_message: OTel prometheusremotewrite receiver (v0.142.0+) only supports Remote Write v2.
-  # Without this setting Prometheus defaults to v1 (prometheus.WriteRequest) which is rejected.
+  # Remote Write configuration to Grafana Alloy
+  # Alloy's prometheus.receive_http component uses standard Prometheus v1 protocol
+  # (no protobuf_message override needed — unlike the old OTel prometheusremotewrite
+  # receiver which required v2).
+  # Endpoint path changed: /api/v1/write → /api/v1/metrics/write (Alloy convention).
   remoteWrite:
-    - url: http://otel-opentelemetry-collector.observability:9090/api/v1/write
-      protobuf_message: "io.prometheus.write.v2.Request"
-      # Native histograms are sent automatically with v2 protocol (send_native_histograms is noop).
-      # Classic→NHCB conversion is handled by global.convert_classic_histograms_to_nhcb above.
-
-      # Suppress "metadata_config.send is redundant" WARN — with Remote Write v2,
-      # metadata is always gathered from the WAL and included in every request.
-      metadata_config:
-        send: false
+    - url: http://alloy.observability:9090/api/v1/metrics/write
 
       # ── write_relabel_configs ──────────────────────────────────────
       # Applied only to remote write; local Prometheus storage is unaffected.
       write_relabel_configs:
-        # 1. Drop Prometheus self-monitoring (job="prometheus") — 700+ series
-        #    of internal engine/tsdb/WAL metrics not relevant to K8s/app
-        #    observability.
-        # 1b. Drop kubernetes-nodes (7 000+ kubelet-internal API/etcd metrics)
-        #     and kubernetes-api-servers (5 700+ apiserver-internal metrics).
-        #     These are K8s control-plane internals (apiserver_request_total,
-        #     etcd_requests_total, kubernetes_feature_enabled, etc.) — not
-        #     relevant for workload/app observability in New Relic.
-        #     Local Prometheus retention is unaffected.
+        # 1. Drop all Kubernetes infrastructure jobs.
+        #    Kiali handles Istio traffic visualization; k8s metrics are not
+        #    needed in the pipeline. Drops: prometheus self-monitoring,
+        #    kubernetes-nodes, kubernetes-api-servers, kubernetes-service-endpoints,
+        #    kubernetes-pods, and kube-state-metrics-related jobs.
+        #    Local Prometheus retention is unaffected.
         - source_labels: [job]
-          regex: "prometheus|kubernetes-nodes|kubernetes-api-servers"
-          action: drop
-        # 2. Drop all summary-type metrics from remote write.
-        #    The OTel prometheusremotewrite receiver does not support
-        #    METRIC_TYPE_SUMMARY; these are silently discarded, causing a
-        #    RW v2 stats mismatch that Prometheus logs as a recurring
-        #    "failedSampleCount" ERROR.  All affected metrics have
-        #    histogram equivalents, so no observability data is lost.
-        #    Rule (a): drop quantile-labeled series (catches any summary):
-        - source_labels: [quantile]
-          regex: ".+"
-          action: drop
-        #    Rule (b): drop _sum/_count companions of known summary
-        #    families (these lack a quantile label so rule (a) misses them):
-        - source_labels: [__name__]
-          regex: "(go_gc_duration_seconds|apiserver_admission_step_admission_duration_seconds_summary|istio_agent_go_gc_duration_seconds)(_sum|_count)?"
+          regex: "prometheus|kubernetes-nodes|kubernetes-api-servers|kubernetes-service-endpoints|kubernetes-pods"
           action: drop
 
 alertmanager:
@@ -80,11 +54,14 @@ alertmanager:
 prometheus-pushgateway:
   enabled: false
 
+# Disabled — Kiali handles Istio traffic visualization; k8s node/pod metrics
+# not needed in the observability pipeline. Can be re-enabled later when a
+# dedicated Kubernetes dashboard tool is implemented.
 prometheus-node-exporter:
-  enabled: true
+  enabled: false
 
 kube-state-metrics:
-  enabled: true
+  enabled: false
 
 rbac:
   create: true

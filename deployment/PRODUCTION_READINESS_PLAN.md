@@ -27,8 +27,8 @@ Full configuration details are documented in [CONFIGURATION_MANUAL.md](CONFIGURA
 | ID | Item | Resolution | Helm Rev |
 |----|------|------------|----------|
 | P0-1 | Jaeger v2 config used invalid v1-style env vars | Complete rewrite to `userconfig` block (OTel Collector-style YAML) with `jaeger_storage`, `healthcheckv2` on port 13133, `max_traces: 5000` | jaeger rev 12 |
-| P0-2 | Debug exporter active on all pipelines | Removed `debug` from all pipeline exporters (commented out for dev troubleshooting) | otel rev 11 |
-| P0-3 | No `memory_limiter` processor | Added `memory_limiter` (limit_mib: 400, spike_limit_mib: 100) as first processor in all pipelines + `GOMEMLIMIT=400MiB` env var | otel rev 11 |
+| P0-2 | Debug exporter active on all pipelines | Removed `debug` from all pipeline exporters (commented out for dev troubleshooting) | alloy rev 1 |
+| P0-3 | No `memory_limiter` processor | Added `memory_limiter` (limit_mib: 400, spike_limit_mib: 100) as first processor in all pipelines + `GOMEMLIMIT=400MiB` env var | alloy rev 1 |
 | P0-4 | 100% trace sampling rate | Reduced `randomSamplingPercentage` from 100 to 5 in Istio Telemetry | kubectl applied |
 | P0-5 | Secrets hardcoded in source control | Replaced hardcoded API key with `%NEW_RELIC_API_KEY%` env var with validation in `create-cluster.bat` | script updated |
 
@@ -38,7 +38,7 @@ Full configuration details are documented in [CONFIGURATION_MANUAL.md](CONFIGURA
 |----|------|------------|----------|
 | P1-1 | Loki has no retention policy | Added `retention_period: 168h` + compactor with `retention_enabled: true`, `working_directory: /var/loki/compactor` | loki rev 2 |
 | P1-2 | Prometheus has no resource limits | Added resources (250m/1 CPU, 512Mi/2Gi memory), `retention: 15d`, `retentionSize: 8GB` | prometheus rev 9 |
-| P1-4 | TLS disabled on New Relic exporter | Removed `tls.insecure: true` from `otlp_http/newrelic` (defaults to secure TLS). Internal exporters keep `insecure: true` (Istio mTLS at mesh layer) | otel rev 11 |
+| P1-4 | TLS disabled on New Relic exporter | Removed `tls.insecure: true` from New Relic exporter (defaults to secure TLS). Internal exporters keep `insecure: true` (Istio mTLS at mesh layer) | alloy rev 1 |
 | P1-5 | Jaeger runs as root (UID 0) | Added `runAsNonRoot: true, runAsUser: 10001` (matches Jaeger v2 Dockerfile) | jaeger rev 12 |
 | P1-7 | Grafana hardcoded credentials | Replaced `adminUser/adminPassword` with `admin.existingSecret: grafana-admin-secret` | grafana rev 2 |
 
@@ -71,7 +71,7 @@ The current defaults are already generous for most workloads. Only tune if you o
 ```yaml
 server:
   remoteWrite:
-    - url: http://otel-opentelemetry-collector.observability:9090/api/v1/write
+    - url: http://alloy.observability:9090/api/v1/metrics/write
       protobuf_message: "io.prometheus.write.v2.Request"
       queue_config:
         capacity: 10000
@@ -98,7 +98,7 @@ Every component has `replicas: 1`. Any pod restart = downtime for that signal.
 
 | Component | Dev Replicas | Prod Replicas | Notes |
 |---|---|---|---|
-| OTel Collector | 1 | 2–3 | Stateless, easy to scale |
+| Grafana Alloy | 1 | 2–3 | Stateless, easy to scale |
 | Jaeger | 1 | 2+ (with shared storage) | Requires Elasticsearch or shared BadgerDB |
 | Loki | 1 (SingleBinary) | 3 (read/write/backend) | Switch to microservices mode |
 | Prometheus | 1 | 2 (with Thanos sidecar) | Or use kube-prometheus-stack |
@@ -174,12 +174,12 @@ Any pod in the cluster can reach observability services.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: otel-collector-ingress
+  name: alloy-ingress
   namespace: observability
 spec:
   podSelector:
     matchLabels:
-      app.kubernetes.io/name: opentelemetry-collector
+      app.kubernetes.io/name: alloy
   ingress:
     - from:
         - namespaceSelector:
@@ -208,27 +208,27 @@ spec:
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
-  name: otel-collector-pdb
+  name: alloy-pdb
   namespace: observability
 spec:
   minAvailable: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: opentelemetry-collector
+      app.kubernetes.io/name: alloy
 ```
 
-**HPA example (OTel Collector):**
+**HPA example (Grafana Alloy):**
 ```yaml
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: otel-collector-hpa
+  name: alloy-hpa
   namespace: observability
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: otel-opentelemetry-collector
+    name: alloy
   minReplicas: 2
   maxReplicas: 5
   metrics:
@@ -248,24 +248,25 @@ spec:
 
 ---
 
-### P2-6: OTel Collector Batch Config May Be Undersized
+### P2-6: Alloy Batch Config May Be Undersized
 
 **Status:** Pending  
 **Effort:** Low | **Impact:** Low — throughput optimization
 
-Current batch config:
-```yaml
-batch:
-  timeout: 5s
-  send_batch_size: 1024
+Current batch config (per-signal in Alloy syntax):
+```
+otelcol.processor.batch "traces" {
+  timeout         = "5s"
+  send_batch_size = 1024
+}
 ```
 
-**Recommendation for production:**
-```yaml
-batch:
-  timeout: 5s
-  send_batch_size: 2048
-  send_batch_max_size: 4096
+**Recommendation for production (adjust in `helm-alloy-values.yaml` configMap.content):**
+```
+otelcol.processor.batch "traces" {
+  timeout         = "5s"
+  send_batch_size = 2048
+}
 ```
 
 ---
@@ -280,7 +281,7 @@ batch:
                                        │ OTLP (gRPC :4317 / HTTP :4318)
                                        ▼
                     ┌──────────────────────────────────────────────┐
-                    │     OTel Collector (2-3 replicas, HPA)       │
+                    │     Grafana Alloy (2-3 replicas, HPA)        │
                     │  ┌────────────┐ ┌────────────┐ ┌──────────┐ │
                     │  │memory_limit│→│   batch     │→│ exporters│ │
                     │  └────────────┘ └────────────┘ └──────────┘ │
@@ -318,7 +319,7 @@ batch:
 
 | Component | Dev CPU (req/lim) | Dev Mem (req/lim) | Prod CPU (req/lim) | Prod Mem (req/lim) |
 |---|---|---|---|---|
-| OTel Collector | 100m/500m | 128Mi/512Mi | 250m/1 | 256Mi/1Gi |
+| Grafana Alloy | 100m/500m | 128Mi/512Mi | 250m/1 | 256Mi/1Gi |
 | Jaeger | 100m/500m | 128Mi/512Mi | 250m/1 | 256Mi/2Gi |
 | Loki | 100m/200m | 128Mi/256Mi | 250m/500m | 256Mi/1Gi |
 | Prometheus | 250m/1 | 512Mi/2Gi | 250m/1 | 512Mi/2Gi |
@@ -340,7 +341,7 @@ batch:
 | P2 | P2-2 | Enable Loki caches (chunksCache + resultsCache) | Low | Deploys memcached pods |
 | P2 | P2-4 | Create NetworkPolicies | Medium | |
 | P2 | P2-5 | PodDisruptionBudgets + HorizontalPodAutoscalers | Low | |
-| P2 | P2-6 | Increase OTel batch size | Low | |
+| P2 | P2-6 | Increase Alloy batch size | Low | |
 
 ---
 
@@ -349,7 +350,7 @@ batch:
 | File | Changes Required | Priority Items |
 |---|---|---|
 | `helm-prometheus-values.yaml` | Queue config (if needed) | P1-3 |
-| `helm-otel-values.yaml` | Increase batch size, scale replicas | P2-6, P1-6 |
+| `helm-alloy-values.yaml` | Increase batch size, scale replicas | P2-6, P1-6 |
 | `helm-loki-values.yaml` | Enable caches, increase PVC, change StorageClass | P2-1, P2-2 |
 | `helm-jaeger-values.yaml` | Switch to Elasticsearch/BadgerDB, scale replicas | P1-6, P2-1 |
 | `helm-grafana-values.yaml` | Change StorageClass, scale replicas | P2-1, P1-6 |

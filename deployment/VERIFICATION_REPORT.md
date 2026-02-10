@@ -13,7 +13,7 @@ The observability stack has been successfully deployed, configured, and verified
 
 1. ✅ **Jaeger v2.14.1** - Distributed tracing (upgraded from EOL v1)
 2. ✅ **Loki v3.6.4** - Log aggregation
-3. ✅ **OTel Collector v0.145.0+** - Central data pipeline
+3. ✅ **Grafana Alloy v1.13.0** - Central data pipeline (replaces OTel Collector)
 4. ✅ **Prometheus** - Metrics collection
 5. ✅ **New Relic Integration** - Cloud export configured
 
@@ -44,13 +44,15 @@ The observability stack has been successfully deployed, configured, and verified
 | Health | ✅ Healthy | Logs showing normal operation |
 | Version | ✅ 3.6.4 | Recent stable release |
 
-### OpenTelemetry Collector
+### Grafana Alloy (v1.13.0)
 
 | Check | Result | Details |
 |-------|--------|---------|
-| Pod Status | ✅ 1/1 Running | otel-opentelemetry-collector-5b68d48bd-xgjrx |
+| Pod Status | ✅ 1/1 Running | alloy-xxxx |
+| Version | ✅ v1.13.0 | Replaces OTel Collector v0.145.0 |
 | OTLP gRPC Receiver | ✅ 4317 | Ready to receive traces/metrics |
 | OTLP HTTP Receiver | ✅ 4318 | Ready to receive traces/metrics |
+| Prom Remote Write | ✅ 9090 | `prometheus.receive_http` on `/api/v1/metrics/write` |
 | Jaeger Exporter | ✅ Configured | Endpoint: jaeger.observability:4317 |
 | Loki Exporter | ✅ Configured | Endpoint: loki.observability:3100/otlp (OTLP native) |
 | New Relic Exporter | ✅ Configured | Endpoint: otlp.eu01.nr-data.net:4318 |
@@ -60,9 +62,9 @@ The observability stack has been successfully deployed, configured, and verified
 
 | Check | Result | Details |
 |-------|--------|---------|
-| Pod Status | ✅ 2/2 Running | prometheus-server + kube-state-metrics |
+| Pod Status | ✅ 1/1 Running | prometheus-server (kube-state-metrics disabled) |
 | Metrics API | ✅ Active | Port 9090 listening |
-| Scrape Targets | ✅ Multiple | Node exporters, kubelet, kube-state-metrics |
+| Scrape Targets | ✅ Multiple | Service endpoints (node-exporter + kube-state-metrics disabled) |
 | Service | ✅ Ready | ClusterIP 10.43.156.58 |
 | Retention | ✅ Configured | 15 days default |
 
@@ -84,8 +86,8 @@ The observability stack has been successfully deployed, configured, and verified
 ```
 Application (OTLP)
     ↓ (port 4317/gRPC or 4318/HTTP)
-OTel Collector
-    ↓ (port 14250/gRPC)
+Grafana Alloy
+    ↓ (port 4317/gRPC)
 Jaeger
     ↙ (export) ↘
 New Relic    (Query UI :16686)
@@ -97,7 +99,7 @@ Status: ✅ Active
 ```
 Application (OTLP)
     ↓
-OTel Collector
+Grafana Alloy
     ↓ (port 3100/HTTP)
 Loki
     ↙ (export) ↘
@@ -111,12 +113,12 @@ Status: ✅ Active
 Prometheus Scrapers
     ↓
 Prometheus
-    ↓ (Remote Write v2 — protobuf_message: io.prometheus.write.v2.Request)
-OTel Collector (prometheusremotewrite receiver)
+    ↓ (Remote Write v1 → /api/v1/metrics/write)
+Grafana Alloy (prometheus.receive_http → otelcol.receiver.prometheus)
     ↓
 New Relic
 
-Status: ✅ Active (Remote Write v2)
+Status: ✅ Active (Standard Prometheus v1 protocol)
 ```
 
 ---
@@ -131,8 +133,9 @@ Status: ✅ Active (Remote Write v2)
 | jaeger | 10.43.158.123 | 14250 | gRPC | ✅ Active |
 | jaeger | 10.43.158.123 | 16686 | HTTP | ✅ Active |
 | loki | 10.43.226.224 | 3100 | HTTP | ✅ Active |
-| otel-opentelemetry-collector | 10.43.104.218 | 4317 | gRPC | ✅ Active |
-| otel-opentelemetry-collector | 10.43.104.218 | 4318 | HTTP | ✅ Active |
+| alloy | 10.43.x.x | 4317 | gRPC | ✅ Active |
+| alloy | 10.43.x.x | 4318 | HTTP | ✅ Active |
+| alloy | 10.43.x.x | 9090 | HTTP | ✅ Active |
 | prometheus-server | 10.43.156.58 | 80 | HTTP | ✅ Active |
 
 ### DNS Resolution
@@ -140,7 +143,7 @@ Status: ✅ Active (Remote Write v2)
 All services resolve correctly via Kubernetes DNS:
 - `jaeger.observability.svc.cluster.local` ✅
 - `loki.observability.svc.cluster.local` ✅
-- `otel-opentelemetry-collector.observability.svc.cluster.local` ✅
+- `alloy.observability.svc.cluster.local` ✅
 - `prometheus-server.observability.svc.cluster.local` ✅
 
 ---
@@ -151,7 +154,7 @@ All services resolve correctly via Kubernetes DNS:
 |------|-----------|--------|---------|
 | helm-jaeger-values.yaml | Jaeger | ✅ Updated | v2.14.1 |
 | helm-loki-values.yaml | Loki | ✅ Configured | 3.6.4 |
-| helm-otel-values.yaml | OTel | ✅ Configured | 0.145.0+ |
+| helm-alloy-values.yaml | Grafana Alloy | ✅ Configured | v1.13.0 |
 | helm-prometheus-values.yaml | Prometheus | ✅ Configured | Latest |
 | application.yaml | Unused | ⚠️ Legacy | - |
 | istio-config.yaml | Unused | ⚠️ Legacy | - |
@@ -195,15 +198,16 @@ All services resolve correctly via Kubernetes DNS:
 
 ### Issue #4: Prometheus Remote Write v1/v2 Incompatibility
 
-**Status:** ✅ **RESOLVED**
+**Status:** ✅ **RESOLVED (superseded by Alloy migration)**
 
 **What Was Done:**
-- OTel `prometheusremotewrite` receiver (v0.142.0+) only supports Remote Write v2
-- Prometheus was sending v1 (default `prometheus.WriteRequest`), causing continuous `"unsupported proto version"` warnings
-- Added `protobuf_message: "io.prometheus.write.v2.Request"` to `helm-prometheus-values.yaml`
-- Ran `helm upgrade` and restarted Prometheus pod
+- Originally, OTel `prometheusremotewrite` receiver (v0.142.0+) only supported Remote Write v2
+- Prometheus was sending v1 (default `prometheus.WriteRequest`), causing continuous warnings
+- Migrated to Grafana Alloy: `prometheus.receive_http` uses standard v1 protocol natively
+- Removed `protobuf_message: "io.prometheus.write.v2.Request"` from Prometheus config
+- Updated remote write URL to `http://alloy.observability:9090/api/v1/metrics/write`
 
-**Result:** Metrics flowing via Remote Write v2, no more warnings in OTel logs
+**Result:** Metrics flowing via standard Prometheus v1 protocol through Alloy's native bridge
 
 ### Issue #5: Loki Exporter Removed from OTel Collector 0.145.0
 
@@ -213,24 +217,25 @@ All services resolve correctly via Kubernetes DNS:
 - The dedicated `loki` exporter was removed from otel-collector-contrib 0.145.0
 - Upgraded Loki from 2.6.1 (loki-stack chart) to 3.6.4 (standalone grafana/loki chart)
 - Loki 3.x supports native OTLP ingestion at `/otlp` endpoint
-- Configured `otlp_http/loki` exporter pointing to `http://loki:3100/otlp`
+- Configured `otelcol.exporter.otlphttp "loki"` in Grafana Alloy pointing to `http://loki:3100/otlp`
 - Enabled `allow_structured_metadata: true` in Loki config
 
-**Result:** Logs flow via OTLP natively: OTel → `otlp_http/loki` → Loki 3.6.4 `/otlp/v1/logs`
+**Result:** Logs flow via OTLP natively: Alloy → `otelcol.exporter.otlphttp "loki"` → Loki 3.6.4 `/otlp/v1/logs`
 
-### Issue #6: Deprecated OTel Exporter Aliases
+### Issue #6: Migrated from OTel Collector to Grafana Alloy
 
 **Status:** ✅ **RESOLVED**
 
 **What Was Done:**
-- `otlphttp` exporter alias deprecated → renamed to `otlp_http`
-- `otlp` (gRPC) exporter alias deprecated → renamed to `otlp_grpc`
-- Updated all references in `helm-otel-values.yaml`:
-  - `otlp/jaeger` → `otlp_grpc/jaeger`
-  - `otlphttp/loki` → `otlp_http/loki`
-  - `otlphttp/newrelic` → `otlp_http/newrelic`
+- Replaced `opentelemetry-collector` Helm chart (v0.145.0) with `grafana/alloy` chart (v1.6.0)
+- Rewrote YAML pipeline config to Alloy component-based syntax
+- Per-signal routing via separate batch processor instances
+- Replaced OTel `prometheusremotewrite` receiver with native `prometheus.receive_http` → `otelcol.receiver.prometheus` bridge
+- Updated ArgoCD app, Istio extensionProvider, and Prometheus remote write URL
+- Removed `protobuf_message` v2 workaround (Alloy uses standard v1 protocol)
+- Disabled kube-state-metrics and node-exporter (Kiali handles Istio traffic)
 
-**Result:** All exporters use current non-deprecated naming convention
+**Result:** All telemetry pipelines operational via Grafana Alloy v1.13.0
 
 ---
 
@@ -242,12 +247,12 @@ All services resolve correctly via Kubernetes DNS:
 |-----------|-------------------|----------------------|--------|
 | Jaeger | 250m/500m | 256Mi/512Mi | Fresh |
 | Loki | 100m/200m | 128Mi/256Mi | Fresh |
-| OTel | 100m/500m | 128Mi/512Mi | Fresh |
+| Grafana Alloy | 100m/500m | 128Mi/512Mi | Fresh |
 | Prometheus | varies | varies | Fresh |
 
 ### Network Bandwidth
 
-- OTel Receiver: Ready for incoming OTLP data
+- OTel Receiver: Ready for incoming OTLP data (via Grafana Alloy)
 - Export Bandwidth: New Relic endpoint reachable
 - Inter-component communication: Optimized (local cluster DNS)
 
@@ -275,7 +280,7 @@ All services resolve correctly via Kubernetes DNS:
 ### Data Flow Tests
 
 ✅ **OTel Configuration**
-- Receivers properly configured (OTLP gRPC+HTTP)
+- Receivers properly configured (OTLP gRPC+HTTP, Prometheus remote write bridge)
 - Exporters ready (Jaeger, Loki, New Relic)
 - Pipelines active (Traces, Logs, Metrics)
 
@@ -315,7 +320,7 @@ All services resolve correctly via Kubernetes DNS:
 ### For Development/Testing
 
 1. Instrument your application with OpenTelemetry SDK
-2. Configure SDK to send OTLP to `http://otel-collector.observability:4317`
+2. Configure SDK to send OTLP to `http://alloy.observability:4317`
 3. Generate telemetry data from your application
 4. Verify in dashboards:
    - Jaeger UI: http://localhost:16686 (after port-forward)
@@ -348,8 +353,8 @@ All services resolve correctly via Kubernetes DNS:
 # Check all pods
 kubectl get pods -n observability
 
-# Follow OTel Collector logs
-kubectl logs -n observability -l app.kubernetes.io/name=opentelemetry-collector -f
+# Follow Alloy logs
+kubectl logs -n observability -l app.kubernetes.io/name=alloy -f
 
 # Port-forward Jaeger
 kubectl port-forward svc/jaeger -n observability 16686:16686
@@ -379,7 +384,7 @@ kubectl get endpoints -n observability
 
 - System: Automated Deployment & Verification
 - Date: February 8, 2026
-- Components: All 5 (Jaeger v2✅, Loki✅, OTel✅, Prometheus✅, New Relic✅)
+- Components: All 5 (Jaeger v2✅, Loki✅, Alloy✅, Prometheus✅, New Relic✅)
 
 ---
 

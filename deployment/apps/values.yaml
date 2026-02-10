@@ -41,12 +41,12 @@ helmApplications:
     namespace: observability
     valuesFile: deployment/helm-prometheus-values.yaml
     syncWave: "1"
-  - name: otel
-    chart: opentelemetry-collector
-    repoURL: https://open-telemetry.github.io/opentelemetry-helm-charts
-    chartVersion: "0.145.0"
+  - name: alloy
+    chart: alloy
+    repoURL: https://grafana.github.io/helm-charts
+    chartVersion: "1.6.0"
     namespace: observability
-    valuesFile: deployment/helm-otel-values.yaml
+    valuesFile: deployment/helm-alloy-values.yaml
     syncWave: "2"
   - name: grafana
     chart: grafana

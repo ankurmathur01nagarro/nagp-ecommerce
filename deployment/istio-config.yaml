@@ -12,7 +12,7 @@ spec:
     extensionProviders:
     - name: otel
       opentelemetry:
-        service: otel-opentelemetry-collector.observability.svc.cluster.local
+        service: alloy.observability.svc.cluster.local
         port: 4317
         resource_detectors:
           environment: {}
