@@ -49,8 +49,14 @@ server:
         # 1. Drop Prometheus self-monitoring (job="prometheus") — 700+ series
         #    of internal engine/tsdb/WAL metrics not relevant to K8s/app
         #    observability.
+        # 1b. Drop kubernetes-nodes (7 000+ kubelet-internal API/etcd metrics)
+        #     and kubernetes-api-servers (5 700+ apiserver-internal metrics).
+        #     These are K8s control-plane internals (apiserver_request_total,
+        #     etcd_requests_total, kubernetes_feature_enabled, etc.) — not
+        #     relevant for workload/app observability in New Relic.
+        #     Local Prometheus retention is unaffected.
         - source_labels: [job]
-          regex: "prometheus"
+          regex: "prometheus|kubernetes-nodes|kubernetes-api-servers"
           action: drop
         # 2. Drop all summary-type metrics from remote write.
         #    The OTel prometheusremotewrite receiver does not support
