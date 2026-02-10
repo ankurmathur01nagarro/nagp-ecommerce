@@ -32,28 +32,6 @@ server:
   # (no protobuf_message override needed — unlike the old OTel prometheusremotewrite
   # receiver which required v2).
   # Endpoint path changed: /api/v1/write → /api/v1/metrics/write (Alloy convention).
-  # Full config override to disable scraping and only remote_write to Alloy.
-  serverFiles:
-    prometheus.yml: |
-      global:
-        evaluation_interval: 30s
-        scrape_interval: 30s
-        scrape_timeout: 10s
-        convert_classic_histograms_to_nhcb: true
-
-      alerting:
-        alertmanagers: []
-
-      rule_files: []
-
-      scrape_configs: []
-
-      remote_write:
-        - url: http://alloy.observability:9090/api/v1/metrics/write
-          write_relabel_configs:
-            - source_labels: [job]
-              regex: "prometheus|kubernetes-.*|kube-.*|kubelet.*|apiserver|coredns|node-exporter"
-              action: drop
 
 alertmanager:
   enabled: false
@@ -69,6 +47,29 @@ prometheus-node-exporter:
 
 kube-state-metrics:
   enabled: false
+
+# Full config override to disable scraping and only remote_write to Alloy.
+serverFiles:
+  prometheus.yml: |
+    global:
+      evaluation_interval: 30s
+      scrape_interval: 30s
+      scrape_timeout: 10s
+      convert_classic_histograms_to_nhcb: true
+
+    alerting:
+      alertmanagers: []
+
+    rule_files: []
+
+    scrape_configs: []
+
+    remote_write:
+      - url: http://alloy.observability:9090/api/v1/metrics/write
+        write_relabel_configs:
+          - source_labels: [job]
+            regex: "prometheus|kubernetes-.*|kube-.*|kubelet.*|apiserver|coredns|node-exporter"
+            action: drop
 
 rbac:
   create: true
