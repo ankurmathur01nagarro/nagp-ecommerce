@@ -1,0 +1,139 @@
+// ===================================================================
+// Grafana Alloy configuration — replaces OTel Collector YAML pipelines
+//
+// Data-flow summary:
+//   OTLP (gRPC :4317 / HTTP :4318)
+//     → memory_limiter → batch "traces"  → jaeger + newrelic
+//     → memory_limiter → batch "logs"    → loki   + newrelic
+//     → memory_limiter → batch "metrics" → newrelic
+//
+//   Prometheus remote-write (:9090 /api/v1/metrics/write)
+//     → otelcol.receiver.prometheus (Prom→OTel bridge)
+//     → memory_limiter → batch "metrics" → newrelic
+// ===================================================================
+
+// ======================= EXPORTERS =======================
+
+// New Relic — all signals (traces, logs, OTLP metrics)
+otelcol.exporter.otlphttp "newrelic" {
+  client {
+    endpoint = "https://otlp.eu01.nr-data.net:4318"
+    headers  = {
+      "api-key" = sys.env("NEW_RELIC_API_KEY"),
+    }
+    timeout = "10s"
+    // TLS: proper certificate validation for external endpoint
+  }
+  sending_queue {
+    enabled       = true
+    num_consumers = 4      // parallel export workers
+    queue_size    = 500    // bounded — prevents unbounded memory growth on backpressure
+  }
+  retry_on_failure {
+    enabled          = true
+    initial_interval = "5s"
+    max_interval     = "30s"
+    max_elapsed_time = "120s"  // stop retrying after 2 min — drop data rather than OOM
+  }
+}
+
+// Jaeger — traces only (OTLP gRPC)
+otelcol.exporter.otlp "jaeger" {
+  client {
+    endpoint = "jaeger.observability.svc.cluster.local:4317"
+    tls {
+      insecure = true  // internal: Istio mTLS encrypts at mesh layer
+    }
+  }
+}
+
+// Loki — logs only (OTLP HTTP, native /otlp endpoint, Loki 3.x)
+otelcol.exporter.otlphttp "loki" {
+  client {
+    endpoint = "http://loki.observability.svc.cluster.local:3100/otlp"
+    tls {
+      insecure = true  // internal: Istio mTLS encrypts at mesh layer
+    }
+  }
+}
+
+// ======================= PROCESSORS (per-signal) =======================
+// Alloy's component model requires per-signal output routing, so each
+// signal type gets its own batch processor with the appropriate exporters.
+
+otelcol.processor.batch "traces" {
+  timeout         = "5s"
+  send_batch_size = 1024
+  output {
+    traces = [otelcol.exporter.otlp.jaeger.input, otelcol.exporter.otlphttp.newrelic.input]
+  }
+}
+
+otelcol.processor.batch "logs" {
+  timeout         = "5s"
+  send_batch_size = 1024
+  output {
+    logs = [otelcol.exporter.otlphttp.loki.input, otelcol.exporter.otlphttp.newrelic.input]
+  }
+}
+
+otelcol.processor.batch "metrics" {
+  timeout         = "5s"
+  send_batch_size = 1024
+  output {
+    metrics = [otelcol.exporter.otlphttp.newrelic.input]
+  }
+}
+
+// ======================= MEMORY LIMITER =======================
+// Must be the first processor in every pipeline. Prevents OOM by
+// refusing data when memory exceeds limit. Works with GOMEMLIMIT env var.
+
+otelcol.processor.memory_limiter "default" {
+  check_interval = "1s"
+  limit          = "400MiB"
+  spike_limit    = "100MiB"
+  output {
+    traces  = [otelcol.processor.batch.traces.input]
+    logs    = [otelcol.processor.batch.logs.input]
+    metrics = [otelcol.processor.batch.metrics.input]
+  }
+}
+
+// ======================= RECEIVERS =======================
+
+// OTLP receiver — apps send traces, logs, and metrics here
+otelcol.receiver.otlp "default" {
+  grpc {
+    endpoint = "0.0.0.0:4317"
+  }
+  http {
+    endpoint = "0.0.0.0:4318"
+  }
+  output {
+    traces  = [otelcol.processor.memory_limiter.default.input]
+    logs    = [otelcol.processor.memory_limiter.default.input]
+    metrics = [otelcol.processor.memory_limiter.default.input]
+  }
+}
+
+// ======================= PROMETHEUS REMOTE WRITE BRIDGE =======================
+// Replaces the OTel Collector's `prometheusremotewrite` receiver.
+// prometheus.receive_http listens on /api/v1/metrics/write (port 9090).
+// otelcol.receiver.prometheus converts Prometheus metrics → OTel format.
+// Note: The endpoint path changed from /api/v1/write → /api/v1/metrics/write.
+//       Prometheus helm-prometheus-values.yaml remoteWrite URL must match.
+
+prometheus.receive_http "default" {
+  http {
+    listen_address = "0.0.0.0"
+    listen_port    = 9090
+  }
+  forward_to = [otelcol.receiver.prometheus.default.receiver]
+}
+
+otelcol.receiver.prometheus "default" {
+  output {
+    metrics = [otelcol.processor.memory_limiter.default.input]
+  }
+}

@@ -61,3 +61,8 @@ rawApplications:
     repoPath: deployment/istio-telemetry
     namespace: istio-system
     syncWave: "0"
+  # Externalized Alloy config ConfigMap (must exist before Helm release)
+  - name: alloy-config
+    repoPath: deployment/alloy
+    namespace: observability
+    syncWave: "1"
