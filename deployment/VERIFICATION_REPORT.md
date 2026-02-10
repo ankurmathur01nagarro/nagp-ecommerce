@@ -1,6 +1,7 @@
 # Observability Stack - Deployment Verification Report
 
 **Report Date:** February 8, 2026  
+**Updated:** February 10, 2026  
 **Status:** ✅ **VERIFIED - ALL SYSTEMS OPERATIONAL**
 
 ---
@@ -48,25 +49,28 @@ The observability stack has been successfully deployed, configured, and verified
 
 | Check | Result | Details |
 |-------|--------|---------|
-| Pod Status | ✅ 1/1 Running | alloy-xxxx |
+| Pod Status | ✅ 2/2 Running | alloy-xxxx (with Istio sidecar) |
 | Version | ✅ v1.13.0 | Replaces OTel Collector v0.145.0 |
 | OTLP gRPC Receiver | ✅ 4317 | Ready to receive traces/metrics |
 | OTLP HTTP Receiver | ✅ 4318 | Ready to receive traces/metrics |
-| Prom Remote Write | ✅ 9090 | `prometheus.receive_http` on `/api/v1/metrics/write` |
+| Prometheus Remote Write | ✅ Active | `prometheus.remote_write` → Prometheus server |
 | Jaeger Exporter | ✅ Configured | Endpoint: jaeger.observability:4317 |
 | Loki Exporter | ✅ Configured | Endpoint: loki.observability:3100/otlp (OTLP native) |
 | New Relic Exporter | ✅ Configured | Endpoint: otlp.eu01.nr-data.net:4318 |
-| Pipelines | ✅ 3 Active | Traces, Logs, Metrics |
+| Prometheus Exporter | ✅ Configured | `otelcol.exporter.prometheus` → `prometheus.remote_write` |
+| Pipelines | ✅ 3 Active | Traces, Logs, Metrics (dual-send to NR + Prometheus) |
 
 ### Prometheus
 
 | Check | Result | Details |
 |-------|--------|---------|
-| Pod Status | ✅ 1/1 Running | prometheus-server (kube-state-metrics disabled) |
+| Pod Status | ✅ 1/1 Running | prometheus-server |
 | Metrics API | ✅ Active | Port 9090 listening |
-| Scrape Targets | ✅ Multiple | Service endpoints (node-exporter + kube-state-metrics disabled) |
+| Remote Write Receiver | ✅ Active | `--enable-feature=remote-write-receiver` |
+| Node Exporter | ✅ Enabled | DaemonSet running on all nodes |
+| Scrape Targets | ✅ 23 Active | All targets UP (kubelet, cAdvisor, node-exporter, service-endpoints, pods) |
 | Service | ✅ Ready | ClusterIP 10.43.156.58 |
-| Retention | ✅ Configured | 15 days default |
+| Retention | ✅ Configured | 15 days / 8GB |
 
 ### New Relic Integration
 
@@ -110,15 +114,21 @@ Status: ✅ Active
 
 ### Metrics Pipeline
 ```
-Prometheus Scrapers
-    ↓
-Prometheus
-    ↓ (Remote Write v1 → /api/v1/metrics/write)
-Grafana Alloy (prometheus.receive_http → otelcol.receiver.prometheus)
-    ↓
-New Relic
+K8s Infrastructure Metrics (local only):
+  kubelet, cAdvisor, node-exporter
+    ↓ (scrape)
+  Prometheus (stored locally, 15d retention)
+  NOT sent to New Relic
 
-Status: ✅ Active (Standard Prometheus v1 protocol)
+App Metrics (dual-send):
+  Application (OTLP)
+      ↓ (port 4317/gRPC or 4318/HTTP)
+  Grafana Alloy
+      ↓ (batch "metrics")
+      ├── → otelcol.exporter.otlphttp "newrelic" → New Relic
+      └── → otelcol.exporter.prometheus → prometheus.remote_write → Prometheus
+
+Status: ✅ Active (K8s metrics local, app metrics dual-send)
 ```
 
 ---
@@ -135,7 +145,6 @@ Status: ✅ Active (Standard Prometheus v1 protocol)
 | loki | 10.43.226.224 | 3100 | HTTP | ✅ Active |
 | alloy | 10.43.x.x | 4317 | gRPC | ✅ Active |
 | alloy | 10.43.x.x | 4318 | HTTP | ✅ Active |
-| alloy | 10.43.x.x | 9090 | HTTP | ✅ Active |
 | prometheus-server | 10.43.156.58 | 80 | HTTP | ✅ Active |
 
 ### DNS Resolution

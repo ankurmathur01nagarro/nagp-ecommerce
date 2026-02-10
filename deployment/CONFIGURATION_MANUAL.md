@@ -6,7 +6,7 @@ This manual documents the complete configuration of the observability stack incl
 
 **Deployment Date:** February 8, 2026  
 **Status:** ✅ Production Ready  
-**Updated:** February 8, 2026
+**Updated:** February 10, 2026
 
 ---
 
@@ -21,30 +21,34 @@ Applications (OTLP Instrumented)
     ↓       ↓       ↓          ↓
   Jaeger  Loki  Prometheus  New Relic
  (traces) (logs) (metrics)   (Cloud)
+                  ↑           ↑
+            app metrics    app metrics
+            via Alloy      via Alloy
+
+Prometheus also scrapes k8s infra metrics directly:
+  kubelet, cAdvisor, node-exporter (local only, NOT sent to New Relic)
 ```
 
 ### Data Flow Pipelines
 
-**Configured (per `helm-alloy-values.yaml`):**
+**Configured (per `deployment/alloy/config.alloy`):**
 
 | Pipeline | Alloy Receiver | Alloy Processors | Alloy Exporters |
 |----------|----------------|-------------------|------------------|
 | **Traces** | `otelcol.receiver.otlp` | `memory_limiter`, `batch "traces"` | `otelcol.exporter.otlp "jaeger"`, `otelcol.exporter.otlphttp "newrelic"` |
 | **Logs** | `otelcol.receiver.otlp` | `memory_limiter`, `batch "logs"` | `otelcol.exporter.otlphttp "loki"`, `otelcol.exporter.otlphttp "newrelic"` |
-| **Metrics** | `otelcol.receiver.otlp`, `prometheus.receive_http` → `otelcol.receiver.prometheus` | `memory_limiter`, `batch "metrics"` | `otelcol.exporter.otlphttp "newrelic"` |
+| **Metrics** | `otelcol.receiver.otlp` | `memory_limiter`, `batch "metrics"` | `otelcol.exporter.otlphttp "newrelic"`, `otelcol.exporter.prometheus "prometheus"` → `prometheus.remote_write "prometheus"` |
 
 > **Note:** Alloy uses a component-based config syntax (not YAML pipelines). Each signal
 > type routes through its own `batch` processor instance. The config lives in
-> `helm-alloy-values.yaml` under `alloy.configMap.content`.
+> `deployment/alloy/config.alloy` (loaded via Kustomize ConfigMap).
 
-> **Note:** After ArgoCD sync, verify the deployed config with:
-> ```bash
-> kubectl get configmap alloy -n observability -o jsonpath='{.data.config\.alloy}'
-> ```
-
-> **Prometheus bridge:** The old OTel `prometheusremotewrite` receiver is replaced by
-> Alloy's native `prometheus.receive_http` → `otelcol.receiver.prometheus` bridge.
-> The endpoint path changed from `/api/v1/write` to `/api/v1/metrics/write`.
+> **Metrics routing design (Feb 10, 2026):**
+> - **App metrics** (pushed via OTLP) reach **both** New Relic and Prometheus
+>   via Alloy's `otelcol.exporter.prometheus` → `prometheus.remote_write`
+> - **K8s infrastructure metrics** (kubelet, cAdvisor, node-exporter) are scraped
+>   directly by Prometheus and stored **locally only** — never sent to New Relic
+> - This separation keeps cloud costs low while retaining full k8s observability in Grafana
 
 ---
 
@@ -52,28 +56,29 @@ Applications (OTLP Instrumented)
 
 ### 1. Grafana Alloy (`helm-alloy-values.yaml`)
 
-**Purpose:** Central telemetry pipeline that receives OTLP signals, bridges Prometheus
-remote write, and exports to all backends. Replaces the OpenTelemetry Collector.
+**Purpose:** Central telemetry pipeline that receives OTLP signals and exports to all
+backends. Replaces the OpenTelemetry Collector. Also pushes app metrics to Prometheus
+via remote-write.
 
 **Image:** `grafana/alloy:v1.13.0` (bundles OTel Collector v0.142.0 internally)
 **Chart:** `alloy-1.6.0` (from `grafana.github.io/helm-charts`)
-**Stability Level:** `public-preview` (required for `otelcol.receiver.prometheus` bridge)
+**Stability Level:** `generally-available`
 
 #### Component-Based Config (Alloy syntax)
 
 Alloy uses a component graph instead of YAML pipelines. The config is defined in
-`helm-alloy-values.yaml` under `alloy.configMap.content`. Key component types:
+`deployment/alloy/config.alloy` (loaded via Kustomize ConfigMap). Key component types:
 
 | Component | Purpose |
 |-----------|---------|
 | `otelcol.receiver.otlp "default"` | Receives traces, logs, metrics via gRPC :4317 / HTTP :4318 |
-| `prometheus.receive_http "default"` | Receives Prometheus remote write on :9090 `/api/v1/metrics/write` |
-| `otelcol.receiver.prometheus "default"` | Bridges Prometheus metrics → OTel format |
 | `otelcol.processor.memory_limiter "default"` | Prevents OOM (limit_mib: 400) |
-| `otelcol.processor.batch "traces"/"logs"/"metrics"` | Per-signal batching (timeout: 5s, batch: 1024) |
+| `otelcol.processor.batch "traces"/"logs"/"metrics"` | Per-signal batching (timeout: 5s, batch: 512) |
 | `otelcol.exporter.otlp "jaeger"` | Sends traces to Jaeger via gRPC |
 | `otelcol.exporter.otlphttp "loki"` | Sends logs to Loki via OTLP HTTP |
 | `otelcol.exporter.otlphttp "newrelic"` | Sends all signals to New Relic |
+| `otelcol.exporter.prometheus "prometheus"` | Converts OTel metrics → Prometheus format |
+| `prometheus.remote_write "prometheus"` | Pushes app metrics to Prometheus remote-write receiver |
 
 **Application Configuration to Send Data:**
 ```
@@ -108,22 +113,23 @@ HTTP:  http://alloy.observability:4318
 - Works with `GOMEMLIMIT=400MiB` env var
 
 **Batch Processors** (per-signal: `"traces"`, `"logs"`, `"metrics"`):
-- `timeout: 5s`, `send_batch_size: 1024`
+- `timeout: 5s`, `send_batch_size: 512`
 - Each routes to its own set of exporters
+- Metrics batch outputs to **both** `otelcol.exporter.otlphttp "newrelic"` and `otelcol.exporter.prometheus "prometheus"`
 
-#### Prometheus Remote Write Bridge
+#### Prometheus Remote Write (App Metrics → Prometheus)
 
-Replaces the OTel Collector's `prometheusremotewrite` YAML receiver with Alloy's native bridge:
+Alloy converts OTLP app metrics to Prometheus format and pushes them to the
+Prometheus server's remote-write receiver:
 ```
-Prometheus → prometheus.receive_http (:9090) → otelcol.receiver.prometheus → memory_limiter → batch "metrics" → newrelic
+App (OTLP) → Alloy → otelcol.exporter.prometheus → prometheus.remote_write → Prometheus (/api/v1/write)
 ```
 
-**Key change:** The endpoint path changed from `/api/v1/write` to `/api/v1/metrics/write`.
-Update `helm-prometheus-values.yaml` accordingly.
+The Prometheus server has `--enable-feature=remote-write-receiver` enabled,
+which exposes the `/api/v1/write` endpoint.
 
-**v2 protocol no longer needed:** The old OTel `prometheusremotewrite` receiver required
-`protobuf_message: "io.prometheus.write.v2.Request"`. Alloy's native `prometheus.receive_http`
-uses standard Prometheus v1 protocol — no `protobuf_message` override required.
+> **Note:** K8s infrastructure metrics (kubelet, cAdvisor, node-exporter) are scraped
+> directly by Prometheus and do NOT flow through Alloy. They are never sent to New Relic.
 
 #### Environment Variables
 ```yaml
@@ -394,26 +400,32 @@ singleBinary:
 
 #### Key Configuration
 
-**Remote Write to Grafana Alloy:**
+**Feature Flags:**
 ```yaml
 server:
   extraArgs:
-    enable-feature: metadata-wal-records
-  remoteWrite:
-    - url: http://alloy.observability:9090/api/v1/metrics/write
+    enable-feature: "metadata-wal-records,remote-write-receiver"
 ```
 
-This sends Prometheus metrics via standard **Remote Write v1** protocol to Alloy's
-`prometheus.receive_http` component, which bridges them into OTel format via
-`otelcol.receiver.prometheus` and forwards to New Relic.
+- `metadata-wal-records`: Preserves metric metadata across WAL replays
+- `remote-write-receiver`: Exposes `/api/v1/write` endpoint so Alloy can push app metrics
 
-> **Note:** The `protobuf_message: "io.prometheus.write.v2.Request"` setting is no longer
-> needed. The old OTel `prometheusremotewrite` receiver required v2; Alloy's native
-> `prometheus.receive_http` uses standard v1 protocol.
+**K8s Infrastructure Scraping:**
+Prometheus uses chart-default `scrapeConfigs` (no manual overrides needed):
+- `kubernetes-apiservers` — API server metrics
+- `kubernetes-nodes` — Kubelet metrics
+- `kubernetes-nodes-cadvisor` — Container resource metrics (CPU, memory, network)
+- `kubernetes-service-endpoints` — Service endpoint auto-discovery
+- `kubernetes-pods` — Pod annotation-based scraping
 
-**Disabled components (k8s metrics not in pipeline — Kiali handles Istio traffic):**
-- `prometheus-node-exporter: enabled: false`
-- `kube-state-metrics: enabled: false`
+These k8s metrics are **local to Prometheus only** and are NOT sent to New Relic.
+
+> **Note:** The `remote-write-receiver` feature flag is required for Alloy to push
+> app metrics to Prometheus. Without it, the `/api/v1/write` endpoint is not available.
+
+**Enabled components:**
+- `prometheus-node-exporter: enabled: true` — Host-level metrics (CPU, memory, disk, network)
+- `kube-state-metrics: enabled: false` — Not needed (chart scrape jobs cover k8s state)
 - `alertmanager: enabled: false`
 - `prometheus-pushgateway: enabled: false`
 
@@ -476,7 +488,14 @@ server:
 
 #### Remote Write Path
 
-Prometheus → (Remote Write v1) → Alloy (`prometheus.receive_http` on port 9090 `/api/v1/metrics/write`) → `otelcol.receiver.prometheus` (Prom→OTel bridge) → `otelcol.processor.memory_limiter` → `otelcol.processor.batch "metrics"` → New Relic (`otelcol.exporter.otlphttp "newrelic"`).
+**App metrics (OTLP → Prometheus):**
+Application (OTLP) → Alloy (`otelcol.receiver.otlp`) → `otelcol.processor.batch "metrics"` → `otelcol.exporter.prometheus "prometheus"` → `prometheus.remote_write "prometheus"` → Prometheus (`/api/v1/write`).
+
+**App metrics (OTLP → New Relic):**
+Application (OTLP) → Alloy (`otelcol.receiver.otlp`) → `otelcol.processor.batch "metrics"` → `otelcol.exporter.otlphttp "newrelic"` → New Relic.
+
+**K8s infra metrics (scraped locally):**
+Kubelet / cAdvisor / node-exporter → Prometheus scrape jobs → stored locally in Prometheus (15d retention, 8GB max). Not exported anywhere.
 
 ---
 
