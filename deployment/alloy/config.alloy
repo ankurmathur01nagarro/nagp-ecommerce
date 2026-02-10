@@ -54,13 +54,17 @@ otelcol.exporter.otlphttp "loki" {
   }
 }
 
-// Prometheus — metrics only (remote-write to Prometheus server)
-otelcol.exporter.prometheusremotewrite "prometheus" {
-  client {
-    endpoint = "http://prometheus-server.observability.svc.cluster.local:80/api/v1/write"
-    tls {
-      insecure = true  // internal: Istio mTLS encrypts at mesh layer
-    }
+// Prometheus — app metrics only (OTel→Prom conversion + remote-write)
+// Two-step bridge: otelcol.exporter.prometheus converts OTel metrics to
+// Prometheus format, then prometheus.remote_write pushes them to the
+// Prometheus server's remote-write receiver endpoint.
+otelcol.exporter.prometheus "prometheus" {
+  forward_to = [prometheus.remote_write.prometheus.receiver]
+}
+
+prometheus.remote_write "prometheus" {
+  endpoint {
+    url = "http://prometheus-server.observability.svc.cluster.local:80/api/v1/write"
   }
 }
 
@@ -88,7 +92,7 @@ otelcol.processor.batch "metrics" {
   timeout         = "5s"
   send_batch_size = 512
   output {
-    metrics = [otelcol.exporter.otlphttp.newrelic.input, otelcol.exporter.prometheusremotewrite.prometheus.input]
+    metrics = [otelcol.exporter.otlphttp.newrelic.input, otelcol.exporter.prometheus.prometheus.input]
   }
 }
 
