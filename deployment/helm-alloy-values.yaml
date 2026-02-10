@@ -14,8 +14,7 @@ alloy:
   stabilityLevel: "public-preview"
 
   configMap:
-    # Use an externally managed ConfigMap to hold the River config.
-    # See alloy/config.configmap.yaml for the source managed in Git.
+    # Use externally provided ConfigMap (single ArgoCD app with extra source)
     create: false
     name: alloy
     key: config.alloy

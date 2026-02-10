@@ -66,6 +66,11 @@ spec:
     - repoURL: {{ $.Values.config.spec.source.repoURL | quote }}
       targetRevision: {{ $.Values.config.spec.source.targetRevision | quote }}
       ref: values
+    {{- if $app.extraSources }}
+    {{- range $src := $app.extraSources }}
+    - {{- toYaml $src | nindent 6 }}
+    {{- end }}
+    {{- end }}
   syncPolicy:
     syncOptions:
       - CreateNamespace=true

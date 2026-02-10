@@ -48,6 +48,10 @@ helmApplications:
     namespace: observability
     valuesFile: deployment/helm-alloy-values.yaml
     syncWave: "2"
+    extraSources:
+      - repoURL: https://github.com/ankurmathur01nagarro/nagp-ecommerce
+        targetRevision: HEAD
+        path: deployment/alloy
   - name: grafana
     chart: grafana
     repoURL: https://grafana-community.github.io/helm-charts
@@ -61,8 +65,3 @@ rawApplications:
     repoPath: deployment/istio-telemetry
     namespace: istio-system
     syncWave: "0"
-  # Externalized Alloy config ConfigMap (must exist before Helm release)
-  - name: alloy-config
-    repoPath: deployment/alloy
-    namespace: observability
-    syncWave: "1"
