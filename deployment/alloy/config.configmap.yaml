@@ -39,9 +39,11 @@ data:
         headers  = {
           "api-key" = sys.env("NEW_RELIC_API_KEY"),
         }
-        timeout = "10s"
+        timeout = "5s"
+        disable_keep_alives = true  // avoid hung HTTP/2 keep-alives on intermediaries
         // TLS: proper certificate validation for external endpoint
       }
+      compression = "gzip"  // reduce payload size to help slow links
       sending_queue {
         enabled       = true
         num_consumers = 4      // parallel export workers
@@ -81,7 +83,7 @@ data:
 
     otelcol.processor.batch "traces" {
       timeout         = "5s"
-      send_batch_size = 1024
+      send_batch_size = 512
       output {
         traces = [otelcol.exporter.otlp.jaeger.input, otelcol.exporter.otlphttp.newrelic.input]
       }
@@ -89,7 +91,7 @@ data:
 
     otelcol.processor.batch "logs" {
       timeout         = "5s"
-      send_batch_size = 1024
+      send_batch_size = 512
       output {
         logs = [otelcol.exporter.otlphttp.loki.input, otelcol.exporter.otlphttp.newrelic.input]
       }
@@ -97,7 +99,7 @@ data:
 
     otelcol.processor.batch "metrics" {
       timeout         = "5s"
-      send_batch_size = 1024
+      send_batch_size = 512
       output {
         metrics = [otelcol.exporter.otlphttp.newrelic.input]
       }

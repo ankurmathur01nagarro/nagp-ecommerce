@@ -1,5 +1,5 @@
 # Observability Stack Verification Script
-# Purpose: Verify Loki, Jaeger, OTel Collector, Prometheus, and New Relic connectivity
+# Purpose: Verify Loki, Jaeger, Alloy, Prometheus, and New Relic connectivity
 # Platform: PowerShell (Windows)
 
 param(
@@ -47,7 +47,7 @@ Write-Host ""
 Write-Section "STEP 1: Pod Status Check"
 
 $components = @(
-    @{ Label = "app.kubernetes.io/name=opentelemetry-collector"; Name = "OTel Collector" },
+    @{ Label = "app.kubernetes.io/name=alloy"; Name = "Alloy" },
     @{ Label = "app.kubernetes.io/name=loki"; Name = "Loki" },
     @{ Label = "app.kubernetes.io/name=jaeger"; Name = "Jaeger" },
     @{ Label = "app.kubernetes.io/instance=prometheus"; Name = "Prometheus" },
@@ -79,7 +79,7 @@ foreach ($component in $components) {
 Write-Host ""
 Write-Host "Pod Details:"
 kubectl get pods -n $Namespace -o wide 2>$null | Select-Object -Index 0
-kubectl get pods -n $Namespace -o wide 2>$null | Select-Object -Skip 1 | Where-Object { $_ -match "otel|loki|jaeger|prometheus|grafana" }
+kubectl get pods -n $Namespace -o wide 2>$null | Select-Object -Skip 1 | Where-Object { $_ -match "alloy|loki|jaeger|prometheus|grafana" }
 
 # ============================================
 # STEP 2: Service Discovery
@@ -88,7 +88,7 @@ Write-Section "STEP 2: Service Discovery"
 
 Write-Host "Services:"
 kubectl get svc -n $Namespace -o wide 2>$null | Select-Object -Index 0
-kubectl get svc -n $Namespace -o wide 2>$null | Select-Object -Skip 1 | Where-Object { $_ -match "otel|loki|jaeger|prometheus|grafana" }
+kubectl get svc -n $Namespace -o wide 2>$null | Select-Object -Skip 1 | Where-Object { $_ -match "alloy|loki|jaeger|prometheus|grafana" }
 
 # ============================================
 # STEP 3: Components Health Check
@@ -154,108 +154,21 @@ catch {
 # ============================================
 Write-Section "STEP 4: Data Flow Tests"
 
-$otelPod = kubectl get pods -n $Namespace -l app.kubernetes.io/name=opentelemetry-collector -o jsonpath='{.items[0].metadata.name}' 2>$null
+$alloyPod = kubectl get pods -n $Namespace -l app.kubernetes.io/name=alloy -o jsonpath='{.items[0].metadata.name}' 2>$null
 
-if ($otelPod) {
-    Write-Host -NoNewline "Testing OTel Collector -> Jaeger connection... "
-    try {
-        $result = kubectl exec -n $Namespace $otelPod -- wget -q -O- --timeout=5 http://jaeger.observability.svc.cluster.local:14250 2>$null
-        Write-Success "Connected"
-    }
-    catch {
-        Write-ErrorMsg "Failed"
-    }
-
-    Write-Host -NoNewline "Testing OTel Collector -> Loki connection... "
-    try {
-        $result = kubectl exec -n $Namespace $otelPod -- wget -q -O- --timeout=5 http://loki.observability.svc.cluster.local:3100/loki/api/v1/status 2>$null
-        Write-Success "Connected"
-    }
-    catch {
-        Write-ErrorMsg "Failed"
-    }
-
-    Write-Host -NoNewline "Testing OTel Collector -> New Relic connection... "
-    try {
-        $result = kubectl exec -n $Namespace $otelPod -- wget -q -O- --timeout=10 https://otlp.eu01.nr-data.net:4318 2>$null
-        Write-Success "Connected"
-    }
-    catch {
-        Write-WarningMsg "Cannot verify (may need HTTPS support in pod)"
-    }
+if ($alloyPod) {
+    Write-Success "Alloy pod found: $alloyPod"
 } else {
-    Write-ErrorMsg "OTel Collector pod not found"
+    Write-ErrorMsg "Alloy pod not found"
 }
 
 # ============================================
-# STEP 5: Configuration Verification
+# STEP 5: End-to-End Pipeline Test (telemetrygen)
 # ============================================
-Write-Section "STEP 5: Configuration Verification"
-
-Write-Host -NoNewline "Checking New Relic API Key Secret... "
-try {
-    $secret = kubectl get secret newrelic-otel-secret -n $Namespace -o jsonpath='{.data.api-key}' 2>$null
-    if ($secret) {
-        $apiKey = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($secret))
-        if ($apiKey) {
-            Write-Success "Found"
-            Write-Host "  API Key Length: $($apiKey.Length) characters"
-            $displayKey = $apiKey.Substring(0, [Math]::Min(8, $apiKey.Length))
-            Write-Host "  First 8 chars: $displayKey..." -ForegroundColor Gray
-        } else {
-            Write-ErrorMsg "Empty key"
-        }
-    } else {
-        Write-ErrorMsg "NOT Found"
-    }
-}
-catch {
-    Write-ErrorMsg "Error retrieving secret"
-}
-
-Write-Host -NoNewline "Checking OTel Collector Config (Exporters)... "
-try {
-    $config = kubectl get configmap otel-opentelemetry-collector -n $Namespace -o yaml 2>$null
-    $jaegerFound = ($config | Select-String "otlp_grpc/jaeger" | Measure-Object).Count -gt 0
-    $lokiFound = ($config | Select-String "otlp_http/loki" | Measure-Object).Count -gt 0
-    $nrFound = ($config | Select-String "otlp_http/newrelic" | Measure-Object).Count -gt 0
-    
-    if ($jaegerFound -and $lokiFound -and $nrFound) {
-        Write-Success "All exporters configured"
-        Write-Host "  - otlp_grpc/jaeger: Found" -ForegroundColor Gray
-        Write-Host "  - otlp_http/loki:   Found" -ForegroundColor Gray
-        Write-Host "  - otlp_http/newrelic: Found" -ForegroundColor Gray
-    } else {
-        Write-WarningMsg "Some exporters missing"
-        if (-not $jaegerFound) { Write-ErrorMsg "  - otlp_grpc/jaeger: NOT found" }
-        if (-not $lokiFound)   { Write-ErrorMsg "  - otlp_http/loki:   NOT found" }
-        if (-not $nrFound)     { Write-ErrorMsg "  - otlp_http/newrelic: NOT found" }
-    }
-}
-catch {
-    Write-ErrorMsg "Cannot verify config"
-}
-
-Write-Host -NoNewline "Checking Prometheus Remote Write v2... "
-try {
-    $promConfig = kubectl get configmap prometheus-server -n $Namespace -o jsonpath='{.data.prometheus\.yml}' 2>$null
-    if ($promConfig -match "io\.prometheus\.write\.v2\.Request") {
-        Write-Success "Remote Write v2 configured"
-    } else {
-        Write-WarningMsg "Remote Write v2 NOT configured (OTel receiver requires v2)"
-    }
-}
-catch {
-    Write-ErrorMsg "Cannot verify Prometheus config"
-}
-
-# ============================================
-# STEP 6: End-to-End Pipeline Test (telemetrygen)
-# ============================================
-Write-Section "STEP 6: End-to-End Pipeline Test (telemetrygen)"
+Write-Section "STEP 5: End-to-End Pipeline Test (telemetrygen)"
 
 $telemetrygenImage = "ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:latest"
-$otelEndpoint = "otel-opentelemetry-collector.$Namespace`:4317"
+$otelEndpoint = "alloy.$Namespace`:4317"
 $testService = "verify-test-$(Get-Date -Format 'HHmmss')"
 
 Write-Host "Service name: $testService" -ForegroundColor Gray
@@ -305,7 +218,7 @@ catch {
 
 # Wait for batch processor to flush
 Write-Host ""
-Write-Host "Waiting 12s for OTel batch flush..." -ForegroundColor Gray
+Write-Host "Waiting 12s for batch flush..." -ForegroundColor Gray
 Start-Sleep -Seconds 12
 
 # Verify traces arrived in Jaeger
@@ -323,39 +236,43 @@ catch {
     Write-ErrorMsg "Could not query Jaeger API"
 }
 
-# Verify logs arrived in Loki (retry up to 3 times — Loki ingestion can take a moment)
+# Verify logs arrived in Loki (retry up to 4 times; try label then substring match)
 Write-Host -NoNewline "Verifying logs in Loki... "
 $lokiFound = $false
-$lokiQuery = 'query={service_name=\"' + $testService + '\"}'
-for ($attempt = 1; $attempt -le 3; $attempt++) {
-    try {
-        kubectl delete pod loki-verify -n $Namespace --ignore-not-found 2>$null | Out-Null
-        $lokiResult = kubectl run loki-verify --rm -i --restart=Never -n $Namespace --image=curlimages/curl:latest -- -s "http://loki.$Namespace.svc.cluster.local:3100/loki/api/v1/query_range" -G --data-urlencode $lokiQuery --data-urlencode "limit=1" 2>&1
-        $lokiResultStr = ($lokiResult | Out-String)
-        if ($lokiResultStr -match '"result":\[') {
-            Write-Success "Found logs for '$testService' in Loki"
-            $lokiFound = $true
-            break
+$lokiQueries = @(
+    ('query={service_name="' + $testService + '"}'),
+    ('query={}|~"' + $testService + '"')
+)
+for ($attempt = 1; $attempt -le 4; $attempt++) {
+    foreach ($lq in $lokiQueries) {
+        try {
+            kubectl delete pod loki-verify -n $Namespace --ignore-not-found 2>$null | Out-Null
+            $lokiResult = kubectl run loki-verify --rm -i --restart=Never -n $Namespace --image=curlimages/curl:latest -- -s "http://loki.$Namespace.svc.cluster.local:3100/loki/api/v1/query_range" -G --data-urlencode $lq --data-urlencode "limit=1" 2>&1
+            $lokiResultStr = ($lokiResult | Out-String)
+            if ($lokiResultStr -match '"result":\[' -and -not ($lokiResultStr -match '"result":\[\]')) {
+                Write-Success "Found logs for '$testService' in Loki (query: $lq)"
+                $lokiFound = $true
+                break
+            }
         }
+        catch { }
     }
-    catch { }
-    if ($attempt -lt 3) {
-        Start-Sleep -Seconds 5
-    }
+    if ($lokiFound) { break }
+    Start-Sleep -Seconds 5
 }
 if (-not $lokiFound) {
-    Write-WarningMsg "Logs not found after 3 attempts (may need more time)"
+    Write-WarningMsg "Logs not found after 4 attempts (may need more time or different labels)"
 }
 
 # ============================================
-# STEP 7: Component Logs (Last 10 lines)
+# STEP 6: Component Logs (Last 10 lines)
 # ============================================
-Write-Section "STEP 7: Recent Logs (Last 10 Lines)"
+Write-Section "STEP 6: Recent Logs (Last 10 Lines)"
 
 Write-Host ""
-Write-Host "OTel Collector Logs:" -ForegroundColor Magenta
+Write-Host "Alloy Logs:" -ForegroundColor Magenta
 Write-Host "---" -ForegroundColor Magenta
-kubectl logs -n $Namespace -l app.kubernetes.io/name=opentelemetry-collector --tail=10 2>$null
+kubectl logs -n $Namespace -l app.kubernetes.io/name=alloy -c alloy --tail=10 2>$null
 
 Write-Host ""
 Write-Host "Loki Logs:" -ForegroundColor Magenta
@@ -368,9 +285,9 @@ Write-Host "---" -ForegroundColor Magenta
 kubectl logs -n $Namespace -l app.kubernetes.io/name=jaeger --tail=10 2>$null
 
 # ============================================
-# STEP 8: Port-Forwarding Instructions
+# STEP 7: Port-Forwarding Instructions
 # ============================================
-Write-Section "STEP 8: Next Steps - Port Forwarding"
+Write-Section "STEP 7: Next Steps - Port Forwarding"
 
 Write-Host ""
 Write-Host "To access dashboards, open a new PowerShell terminal and run:"
@@ -396,21 +313,21 @@ Write-Host "  Navigate to: https://one.newrelic.com"
 Write-Host ""
 
 # ============================================
-# STEP 9: Summary
+# STEP 8: Summary
 # ============================================
-Write-Section "STEP 9: Test Summary"
+Write-Section "STEP 8: Test Summary"
 
 Write-Host ""
 $lokiStatus = kubectl get pods -n $Namespace -l app.kubernetes.io/name=loki -o jsonpath='{.items[0].status.phase}' 2>$null
 $jaegerStatus = kubectl get pods -n $Namespace -l app.kubernetes.io/name=jaeger -o jsonpath='{.items[0].status.phase}' 2>$null
-$otelStatus = kubectl get pods -n $Namespace -l app.kubernetes.io/name=opentelemetry-collector -o jsonpath='{.items[0].status.phase}' 2>$null
+$alloyStatus = kubectl get pods -n $Namespace -l app.kubernetes.io/name=alloy -o jsonpath='{.items[0].status.phase}' 2>$null
 $promStatus = kubectl get pods -n $Namespace -l app.kubernetes.io/instance=prometheus -o jsonpath='{.items[0].status.phase}' 2>$null
 $grafanaStatus = kubectl get pods -n $Namespace -l app.kubernetes.io/name=grafana -o jsonpath='{.items[0].status.phase}' 2>$null
 
 Write-Host "Component Status:"
 if ($lokiStatus -eq "Running") { Write-Success "Loki: $lokiStatus" } else { Write-ErrorMsg "Loki: $lokiStatus" }
 if ($jaegerStatus -eq "Running") { Write-Success "Jaeger: $jaegerStatus" } else { Write-ErrorMsg "Jaeger: $jaegerStatus" }
-if ($otelStatus -eq "Running") { Write-Success "OTel Collector: $otelStatus" } else { Write-ErrorMsg "OTel Collector: $otelStatus" }
+if ($alloyStatus -eq "Running") { Write-Success "Alloy: $alloyStatus" } else { Write-ErrorMsg "Alloy: $alloyStatus" }
 if ($promStatus -eq "Running") { Write-Success "Prometheus: $promStatus" } else { Write-ErrorMsg "Prometheus: $promStatus" }
 if ($grafanaStatus -eq "Running") { Write-Success "Grafana: $grafanaStatus" } else { Write-ErrorMsg "Grafana: $grafanaStatus" }
 
@@ -420,7 +337,7 @@ Write-Host "Verification Complete!" -ForegroundColor Green
 Write-Host "===============================================" -ForegroundColor Green
 Write-Host ""
 
-if ($lokiStatus -eq "Running" -and $jaegerStatus -eq "Running" -and $otelStatus -eq "Running") {
+if ($lokiStatus -eq "Running" -and $jaegerStatus -eq "Running" -and $alloyStatus -eq "Running") {
     Write-Success "All critical components are READY!"
     Write-Host ""
     Write-Host "Next steps:"
