@@ -25,7 +25,6 @@ otelcol.exporter.otlphttp "newrelic" {
     disable_keep_alives = true  // avoid hung HTTP/2 keep-alives on intermediaries
     // TLS: proper certificate validation for external endpoint
   }
-  compression = "gzip"  // reduce payload size to help slow links
   sending_queue {
     enabled       = true
     num_consumers = 4      // parallel export workers
