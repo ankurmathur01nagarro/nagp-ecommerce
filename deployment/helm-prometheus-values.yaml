@@ -12,6 +12,9 @@ server:
   # Ref: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#scrape_config
   global:
     convert_classic_histograms_to_nhcb: true
+    evaluation_interval: 30s
+    scrape_interval: 30s
+    scrape_timeout: 10s
 
   # Resource limits (P1-2)
   resources:
@@ -53,12 +56,6 @@ scrapeConfigs: null
 
 serverFiles:
   prometheus.yml:
-    global:
-      evaluation_interval: 30s
-      scrape_interval: 30s
-      scrape_timeout: 10s
-      convert_classic_histograms_to_nhcb: true
-
     alerting:
       alertmanagers: []
 
