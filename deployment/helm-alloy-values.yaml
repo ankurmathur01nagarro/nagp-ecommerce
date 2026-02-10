@@ -9,9 +9,7 @@ controller:
   replicas: 1
 
 alloy:
-  # Required for otelcol.receiver.prometheus (public-preview stability component)
-  # used to bridge Prometheus remote-write metrics into the OTel pipeline.
-  stabilityLevel: "public-preview"
+  stabilityLevel: "generally-available"
 
   configMap:
     # Use externally provided ConfigMap (single ArgoCD app with extra source)
@@ -28,10 +26,6 @@ alloy:
     - name: otlp-http
       port: 4318
       targetPort: 4318
-      protocol: TCP
-    - name: prom-rw
-      port: 9090
-      targetPort: 9090
       protocol: TCP
 
   # Environment variables (same secrets as previous OTel Collector config)

@@ -4,7 +4,7 @@
 
 server:
   extraArgs:
-    enable-feature: metadata-wal-records
+    enable-feature: "metadata-wal-records,remote-write-receiver"
 
   # Convert classic histograms to Native Histograms with Custom Buckets (NHCB)
   # at scrape time. Useful for any remaining scrape targets that expose classic
@@ -30,11 +30,7 @@ server:
   retention: "15d"
   retentionSize: "8GB"
 
-  # Remote Write configuration to Grafana Alloy
-  # Alloy's prometheus.receive_http component uses standard Prometheus v1 protocol
-  # (no protobuf_message override needed — unlike the old OTel prometheusremotewrite
-  # receiver which required v2).
-  # Endpoint path changed: /api/v1/write → /api/v1/metrics/write (Alloy convention).
+
 
 alertmanager:
   enabled: false
@@ -42,33 +38,17 @@ alertmanager:
 prometheus-pushgateway:
   enabled: false
 
-# Disabled — Kiali handles Istio traffic visualization; k8s node/pod metrics
-# not needed in the observability pipeline. Can be re-enabled later when a
-# dedicated Kubernetes dashboard tool is implemented.
+# Node-level CPU/memory/disk/network metrics via DaemonSet.
+# Scraped by the node-exporter job defined in scrape_configs below.
 prometheus-node-exporter:
-  enabled: false
+  enabled: true
 
 kube-state-metrics:
   enabled: false
 
-# Disable all built-in scrapeConfigs and replace the generated config entirely.
-scrapeConfigs: null
-
-serverFiles:
-  prometheus.yml:
-    alerting:
-      alertmanagers: []
-
-    rule_files: []
-
-    scrape_configs: []
-
-    remote_write:
-      - url: http://alloy.observability:9090/api/v1/metrics/write
-        write_relabel_configs:
-          - source_labels: [job]
-            regex: "prometheus|kubernetes-.*|kube-.*|kubelet.*|apiserver|coredns|node-exporter"
-            action: drop
+# Use chart-default scrapeConfigs — includes kubelet, cAdvisor, node-exporter,
+# kubernetes-service-endpoints, kubernetes-pods, etc. Jobs with no matching
+# targets are harmless (0 active targets).
 
 rbac:
   create: true

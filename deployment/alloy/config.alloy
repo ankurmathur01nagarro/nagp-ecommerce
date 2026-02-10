@@ -5,11 +5,7 @@
 //   OTLP (gRPC :4317 / HTTP :4318)
 //     → memory_limiter → batch "traces"  → jaeger + newrelic
 //     → memory_limiter → batch "logs"    → loki   + newrelic
-//     → memory_limiter → batch "metrics" → newrelic
-//
-//   Prometheus remote-write (:9090 /api/v1/metrics/write)
-//     → otelcol.receiver.prometheus (Prom→OTel bridge)
-//     → memory_limiter → batch "metrics" → newrelic
+//     → memory_limiter → batch "metrics" → newrelic + prometheus (remote-write receiver)
 // ===================================================================
 
 // ======================= EXPORTERS =======================
@@ -58,6 +54,16 @@ otelcol.exporter.otlphttp "loki" {
   }
 }
 
+// Prometheus — metrics only (remote-write to Prometheus server)
+otelcol.exporter.prometheusremotewrite "prometheus" {
+  client {
+    endpoint = "http://prometheus-server.observability.svc.cluster.local:80/api/v1/write"
+    tls {
+      insecure = true  // internal: Istio mTLS encrypts at mesh layer
+    }
+  }
+}
+
 // ======================= PROCESSORS (per-signal) =======================
 // Alloy's component model requires per-signal output routing, so each
 // signal type gets its own batch processor with the appropriate exporters.
@@ -82,7 +88,7 @@ otelcol.processor.batch "metrics" {
   timeout         = "5s"
   send_batch_size = 512
   output {
-    metrics = [otelcol.exporter.otlphttp.newrelic.input]
+    metrics = [otelcol.exporter.otlphttp.newrelic.input, otelcol.exporter.prometheusremotewrite.prometheus.input]
   }
 }
 
@@ -114,27 +120,6 @@ otelcol.receiver.otlp "default" {
   output {
     traces  = [otelcol.processor.memory_limiter.default.input]
     logs    = [otelcol.processor.memory_limiter.default.input]
-    metrics = [otelcol.processor.memory_limiter.default.input]
-  }
-}
-
-// ======================= PROMETHEUS REMOTE WRITE BRIDGE =======================
-// Replaces the OTel Collector's `prometheusremotewrite` receiver.
-// prometheus.receive_http listens on /api/v1/metrics/write (port 9090).
-// otelcol.receiver.prometheus converts Prometheus metrics → OTel format.
-// Note: The endpoint path changed from /api/v1/write → /api/v1/metrics/write.
-//       Prometheus helm-prometheus-values.yaml remoteWrite URL must match.
-
-prometheus.receive_http "default" {
-  http {
-    listen_address = "0.0.0.0"
-    listen_port    = 9090
-  }
-  forward_to = [otelcol.receiver.prometheus.default.receiver]
-}
-
-otelcol.receiver.prometheus "default" {
-  output {
     metrics = [otelcol.processor.memory_limiter.default.input]
   }
 }
