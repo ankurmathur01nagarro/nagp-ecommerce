@@ -82,7 +82,7 @@ alloy:
         timeout         = "5s"
         send_batch_size = 1024
         output {
-          traces = [otelcol.exporter.otlp "jaeger".input, otelcol.exporter.otlphttp "newrelic".input]
+          traces = [otelcol.exporter.otlp.jaeger.input, otelcol.exporter.otlphttp.newrelic.input]
         }
       }
 
@@ -90,7 +90,7 @@ alloy:
         timeout         = "5s"
         send_batch_size = 1024
         output {
-          logs = [otelcol.exporter.otlphttp "loki".input, otelcol.exporter.otlphttp "newrelic".input]
+          logs = [otelcol.exporter.otlphttp.loki.input, otelcol.exporter.otlphttp.newrelic.input]
         }
       }
 
@@ -98,7 +98,7 @@ alloy:
         timeout         = "5s"
         send_batch_size = 1024
         output {
-          metrics = [otelcol.exporter.otlphttp "newrelic".input]
+          metrics = [otelcol.exporter.otlphttp.newrelic.input]
         }
       }
 
@@ -111,9 +111,9 @@ alloy:
         limit_mib       = 400
         spike_limit_mib = 100
         output {
-          traces  = [otelcol.processor.batch "traces".input]
-          logs    = [otelcol.processor.batch "logs".input]
-          metrics = [otelcol.processor.batch "metrics".input]
+          traces  = [otelcol.processor.batch.traces.input]
+          logs    = [otelcol.processor.batch.logs.input]
+          metrics = [otelcol.processor.batch.metrics.input]
         }
       }
 
@@ -128,9 +128,9 @@ alloy:
           endpoint = "0.0.0.0:4318"
         }
         output {
-          traces  = [otelcol.processor.memory_limiter "default".input]
-          logs    = [otelcol.processor.memory_limiter "default".input]
-          metrics = [otelcol.processor.memory_limiter "default".input]
+          traces  = [otelcol.processor.memory_limiter.default.input]
+          logs    = [otelcol.processor.memory_limiter.default.input]
+          metrics = [otelcol.processor.memory_limiter.default.input]
         }
       }
 
@@ -146,12 +146,12 @@ alloy:
           listen_address = "0.0.0.0"
           listen_port    = 9090
         }
-        forward_to = [otelcol.receiver.prometheus "default".receiver]
+        forward_to = [otelcol.receiver.prometheus.default.receiver]
       }
 
       otelcol.receiver.prometheus "default" {
         output {
-          metrics = [otelcol.processor.memory_limiter "default".input]
+          metrics = [otelcol.processor.memory_limiter.default.input]
         }
       }
 
