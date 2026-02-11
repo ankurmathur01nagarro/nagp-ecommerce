@@ -40,6 +40,16 @@ function Initialize-Logging {
         [string]$LogDirectory = "."
     )
     
+    # Ensure log directory exists
+    if (-not (Test-Path $LogDirectory)) {
+        try {
+            New-Item -ItemType Directory -Path $LogDirectory -Force | Out-Null
+        } catch {
+            Write-Error "Failed to create log directory: $_"
+            return $false
+        }
+    }
+    
     $timestamp = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"
     $script:LogPath = Join-Path $LogDirectory "cluster-setup-$timestamp.log"
     

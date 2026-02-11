@@ -1,6 +1,5 @@
 [CmdletBinding()]
 param(
-    [switch]$SkipPrerequisiteCheck,
     [switch]$DryRun
 )
 
@@ -12,7 +11,8 @@ Import-Module -Name ".\idempotency.psm1" -Force -DisableNameChecking
 
 # Initialize logging first
 try {
-    $null = Initialize-Logging -LogDirectory (Get-Location)
+    $logsDir = Join-Path (Get-Location) "logs"
+    $null = Initialize-Logging -LogDirectory $logsDir
     Log-Info "═════════════════════════════════════════════════════════════"
     Log-Info "Kubernetes Cluster Setup Script Started"
     Log-Info "═════════════════════════════════════════════════════════════"
@@ -30,29 +30,6 @@ try {
     Log-Error "Failed to initialize: $_"
     exit 1
 }
-
-# Validate prerequisites
-$ctx.ExecuteStep("Validating Prerequisites", {
-    if (-not $SkipPrerequisiteCheck) {
-        $prereqResults = Test-Prerequisites
-        Show-PrerequisitesStatus $prereqResults
-        
-        if (-not $prereqResults.AllChecksPassed) {
-            Log-Error "Critical prerequisites failed"
-            exit 1
-        }
-        
-        if ($prereqResults.MissingOptionalTools) {
-            $proceed = Confirm-ProceedWithMissingTools -PrerequisitesCheck $prereqResults
-            if (-not $proceed) {
-                Log-Warning "Setup cancelled due to missing optional tools"
-                exit 0
-            }
-        }
-    } else {
-        Log-Warning "Prerequisites check skipped"
-    }
-})
 
 # ============================================================================
 # Interactive Setup Wizard - Input Collection Phase
@@ -226,7 +203,7 @@ if ($useK3d) {
     
     $ctx.ExecuteStep("Installing Istio", {
         if (-not (Test-IstioInstalled)) {
-            istioctl install -f .\deployment\istio-config.yaml --set "values.global.platform=$istioPlatform" -y
+            istioctl install -f ..\deployment\scripts\istio-config.yaml --set "values.global.platform=$istioPlatform" -y
             kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-1.28/samples/addons/kiali.yaml
             Wait-IstioPodsReady
             $ctx.AutoTrack("ServiceMesh", "istio")
@@ -296,7 +273,7 @@ if ($useK3d) {
             } else {
                 helm install argocd argo/argo-cd `
                     -n argocd `
-                    -f .\deployment\helm-argocd-values.yaml `
+                    -f ..\deployment\scripts\helm-argocd-values.yaml `
                     --set "configs.secret.argocdServerAdminPassword=$bcryptPassword"
                 
                 $ctx.AutoTrack("HelmRelease", "argocd", "argocd")
@@ -327,7 +304,7 @@ if ($useK3d) {
         }
         
         if (-not (Test-ArgoCDApplicationsExist)) {
-            kubectl apply -f .\deployment\application.yaml
+            kubectl apply -f ..\deployment\scripts\application.yaml
             $ctx.AutoTrack("ArgoCDApplication", "nagp-applications")
         } else {
             Log-Info "ArgoCD applications already deployed"

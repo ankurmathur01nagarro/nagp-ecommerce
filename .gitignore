@@ -1,2 +1,6 @@
 *.crt
 *.key
+
+# Logs
+*.log
+logs/

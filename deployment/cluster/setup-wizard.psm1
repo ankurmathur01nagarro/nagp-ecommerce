@@ -546,71 +546,6 @@ function Show-CompletionSummary {
 }
 
 # Display prerequisite check results
-function Show-PrerequisitesStatus {
-    param([hashtable]$PrerequisitesCheck)
-    
-    Write-SpectreHost ""
-    Write-SpectreRule "Prerequisite Validation" "cyan"
-    
-    # PowerShell version
-    $psCheck = $PrerequisitesCheck.Details | Where-Object { $_.Check -eq "PowerShell Version" }
-    if ($psCheck.Status -eq "PASS") {
-        Write-SpectreHost "[green]PASS[/] PowerShell $($psCheck.Current)"
-    } else {
-        Write-SpectreHost "[red]FAIL[/] PowerShell $($psCheck.Current) - Requires 7.0+"
-    }
-    
-    # Commands
-    Write-SpectreHost ""
-    Write-SpectreHost "[cyan]Tools:[/]"
-    $commandChecks = $PrerequisitesCheck.Details | Where-Object { $_.Check -like "Command:*" }
-    foreach ($cmd in $commandChecks) {
-        $tool = $cmd.Tool
-        if ($cmd.Status -eq "PASS") {
-            Write-SpectreHost "  [green]PASS[/] $tool"
-        } else {
-            Write-SpectreHost "  [red]FAIL[/] $tool"
-        }
-    }
-    
-    # Files
-    $fileCheck = $PrerequisitesCheck.Details | Where-Object { $_.Check -eq "Required Files" }
-    Write-SpectreHost ""
-    if ($fileCheck.Status -eq "PASS") {
-        Write-SpectreHost "[green]PASS[/] Required configuration files found"
-    } else {
-        Write-SpectreHost "[red]FAIL[/] Missing files:"
-        foreach ($missing in $fileCheck.Missing) {
-            $safeMissing = Escape-SpectreMarkup $missing
-            Write-SpectreHost "[red]  - $safeMissing[/]"
-        }
-    }
-    
-    Write-SpectreHost ""
-}
-
-# Confirm to proceed with missing optional tools
-function Confirm-ProceedWithMissingTools {
-    param([hashtable]$PrerequisitesCheck)
-    
-    $missingTools = @()
-    foreach ($cmd in $PrerequisitesCheck.CommandStatus.GetEnumerator()) {
-        if (-not $cmd.Value.Exists -and -not $cmd.Value.IsCritical) {
-            $missingTools += $cmd.Key
-        }
-    }
-    
-    if ($missingTools.Count -eq 0) {
-        return $true
-    }
-    
-    Write-SpectreHost "[yellow]Optional tools not found: $($missingTools -join ', ')[/]"
-    Write-SpectreHost "[yellow]The setup can continue, but some features may be limited.[/]"
-    
-    $proceed = Confirm-Spectre -Question "Continue anyway?" -DefaultAnswer $true
-    return $proceed
-}
-
 Export-ModuleMember -Function @(
     'Initialize-SpectreConsole',
     'Show-WizardHeader',
@@ -632,8 +567,6 @@ Export-ModuleMember -Function @(
     'Set-KubernetesContext',
     'Confirm-ClusterSelection',
     'Get-KubernetesPlatform',
-    'Get-IstioPlatformValue',
-    'Show-PrerequisitesStatus',
-    'Confirm-ProceedWithMissingTools'
+    'Get-IstioPlatformValue'
 )
 

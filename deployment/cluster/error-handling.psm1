@@ -1,8 +1,8 @@
-# Error Handling and Prerequisites Module
-# Provides command validation, prerequisite checks, and execution wrappers
+# Error Handling Module
+# Provides command validation and execution wrappers
 
 # ============================================================================
-# Prerequisite Validation Functions
+# Command Validation Functions
 # ============================================================================
 
 # Test if a command is available in the system
@@ -14,162 +14,6 @@ function Test-CommandExists {
     
     $command = Get-Command $CommandName -ErrorAction SilentlyContinue
     return $null -ne $command
-}
-
-# Test if kubectl cluster is reachable
-function Test-KubernetesClusterAccess {
-    try {
-        $output = kubectl cluster-info 2>&1
-        return $output.Count -gt 0 -and $output -notmatch "error"
-    } catch {
-        return $false
-    }
-}
-
-# Test if all required deployment files exist
-function Test-RequiredFiles {
-    $requiredFiles = @(
-        ".\deployment\istio-config.yaml",
-        ".\deployment\helm-argocd-values.yaml",
-        ".\deployment\application.yaml"
-    )
-    
-    $missingFiles = @()
-    foreach ($file in $requiredFiles) {
-        if (-not (Test-Path $file)) {
-            $missingFiles += $file
-        }
-    }
-    
-    return @{
-        AllExist = $missingFiles.Count -eq 0
-        MissingFiles = $missingFiles
-    }
-}
-
-# Test PowerShell version compatibility
-function Test-PowerShellVersion {
-    $minVersion = [version]"7.0.0"
-    $currentVersion = $PSVersionTable.PSVersion
-    
-    return @{
-        IsCompatible = $currentVersion -ge $minVersion
-        CurrentVersion = $currentVersion
-        RequiredVersion = $minVersion
-    }
-}
-
-# Comprehensive prerequisite checks
-function Test-Prerequisites {
-    <#
-    .SYNOPSIS
-    Validates all prerequisites before cluster setup
-    
-    .DESCRIPTION
-    Checks PowerShell version, required commands, files, and cluster access.
-    Returns detailed status for each check.
-    
-    .OUTPUTS
-    PSCustomObject with properties: AllChecksPassed, Details (array), CommandStatus (hashtable)
-    #>
-    
-    $results = @{
-        AllChecksPassed = $true
-        Details = @()
-        CommandStatus = @{}
-        FileStatus = @{}
-    }
-    
-    # Check PowerShell version
-    $psVersion = Test-PowerShellVersion
-    if (-not $psVersion.IsCompatible) {
-        $results.AllChecksPassed = $false
-        $results.Details += @{
-            Check = "PowerShell Version"
-            Status = "FAIL"
-            Current = $psVersion.CurrentVersion
-            Required = $psVersion.RequiredVersion
-            Message = "PowerShell 7.0+ required"
-        }
-    } else {
-        $results.Details += @{
-            Check = "PowerShell Version"
-            Status = "PASS"
-            Current = $psVersion.CurrentVersion
-        }
-    }
-    
-    # Check critical commands (scoop, kubectl, helm, k3d, istioctl, argocd)
-    $commands = @{
-        "kubectl" = $true
-        "helm" = $true
-        "istioctl" = $true
-        "argocd" = $true
-        "scoop" = $true
-        "k3d" = $false  # Not critical for remote cluster mode
-    }
-    
-    foreach ($cmd in $commands.GetEnumerator()) {
-        $exists = Test-CommandExists $cmd.Key
-        $isCritical = $cmd.Value
-        
-        $results.CommandStatus[$cmd.Key] = @{
-            Exists = $exists
-            IsCritical = $isCritical
-        }
-        
-        if ($exists) {
-            $results.Details += @{
-                Check = "Command: $($cmd.Key)"
-                Status = "PASS"
-                Tool = $cmd.Key
-                Version = "Installed"
-            }
-        } else {
-            if ($isCritical) {
-                $results.AllChecksPassed = $false
-            }
-            
-            $status = if ($isCritical) { "FAIL" } else { "WARN" }
-            $results.Details += @{
-                Check = "Command: $($cmd.Key)"
-                Status = $status
-                Tool = $cmd.Key
-                Message = if ($isCritical) { "CRITICAL: Tool not found" } else { "Optional tool not found" }
-            }
-        }
-    }
-    
-    # Check required files
-    $fileCheck = Test-RequiredFiles
-    $results.FileStatus = $fileCheck
-    
-    if ($fileCheck.AllExist) {
-        $results.Details += @{
-            Check = "Required Files"
-            Status = "PASS"
-            FileCount = 3
-        }
-    } else {
-        $results.AllChecksPassed = $false
-        $results.Details += @{
-            Check = "Required Files"
-            Status = "FAIL"
-            Missing = $fileCheck.MissingFiles
-            Count = $fileCheck.MissingFiles.Count
-        }
-    }
-    
-    # Check for missing optional tools
-    $hasOptionalMissing = $false
-    foreach ($cmd in $results.CommandStatus.GetEnumerator()) {
-        if (-not $cmd.Value.Exists -and -not $cmd.Value.IsCritical) {
-            $hasOptionalMissing = $true
-        }
-    }
-    $results.MissingOptionalTools = $hasOptionalMissing
-    
-    return $results
 }
 
 # ============================================================================
@@ -538,15 +382,8 @@ function Ensure-Resource {
     $ctx.AutoTrack($Type, $Name, $Namespace)
 }
 
-# Note: Show-PrerequisitesStatus and Confirm-ProceedWithMissingTools are defined in setup-wizard.psm1
-# with Spectre.Console TUI support. Do not duplicate them here.
-
 Export-ModuleMember -Function @(
     'Test-CommandExists',
-    'Test-KubernetesClusterAccess',
-    'Test-RequiredFiles',
-    'Test-PowerShellVersion',
-    'Test-Prerequisites',
     'Invoke-KubernetesCommand',
     'Invoke-CommandWithRetry',
     'Track-CreatedResource',
