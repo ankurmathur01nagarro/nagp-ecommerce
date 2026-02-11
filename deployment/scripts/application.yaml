@@ -65,7 +65,7 @@ spec:
   source:
     repoURL: https://github.com/ankurmathur01nagarro/nagp-ecommerce
     targetRevision: HEAD
-    path: deployment/apps
+    path: deployment/apps/scripts
   destination:
     server: https://kubernetes.default.svc
     namespace: nagp-ecom

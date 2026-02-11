@@ -1,11 +1,5 @@
 // ===================================================================
 // Grafana Alloy configuration — replaces OTel Collector YAML pipelines
-//
-// Data-flow summary:
-//   OTLP (gRPC :4317 / HTTP :4318)
-//     → memory_limiter → batch "traces"  → jaeger + newrelic
-//     → memory_limiter → batch "logs"    → loki   + newrelic
-//     → memory_limiter → batch "metrics" → newrelic + prometheus (remote-write receiver)
 // ===================================================================
 
 // ======================= EXPORTERS =======================
