@@ -60,8 +60,8 @@ helmApplications:
     valuesFile: deployment/scripts/helm-grafana-values.yaml
     syncWave: "3"
 
-rawApplications:
-  - name: istio-telemetry
-    repoPath: deployment/scripts/istio-telemetry
-    namespace: istio-system
-    syncWave: "0"
+# rawApplications:
+#   - name: istio-telemetry
+#     repoPath: deployment/scripts/istio-telemetry
+#     namespace: istio-system
+#     syncWave: "0"
