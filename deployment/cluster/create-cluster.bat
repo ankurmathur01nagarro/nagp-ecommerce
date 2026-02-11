@@ -55,4 +55,4 @@ echo Install ArgoCD Application that contains all (Apps of App Pattern)
 echo ================================================================
 @rem Create namespace for application with istio ambient mode labels
 kubectl create namespace nagp-ecom --labels istio.io/dataplane-mode=ambient
-kubectl apply -f .\deployment\application.yaml
+kubectl apply -f .\deployment\scripts\application.yaml
