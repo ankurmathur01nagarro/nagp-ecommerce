@@ -10,7 +10,7 @@ metadata:
 spec:
   parentRefs:
     - name: nagp-ecom-gateway
-      namespace: default
+      namespace: nagp-ecom
   hostnames:
     - "ecom.docker.localhost"
     - "localhost"
