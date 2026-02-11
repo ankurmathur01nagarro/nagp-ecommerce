@@ -491,15 +491,6 @@ function Get-IstioPlatformValue {
 }
 
 # Display section header with status
-function Show-SectionHeader {
-    param(
-        [string]$Title
-    )
-    $cleanTitle = $Title -replace '\[/?[a-z]+\]', ''
-    Write-SpectreRule $cleanTitle "cyan"
-}
-
-# Display success message
 function Show-Success {
     param(
         [string]$Message

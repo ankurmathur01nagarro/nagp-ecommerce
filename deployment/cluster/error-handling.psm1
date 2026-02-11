@@ -7,10 +7,7 @@
 
 # Test if a command is available in the system
 function Test-CommandExists {
-    param(
-        [string]$CommandName,
-        [bool]$IsCritical = $true
-    )
+    param([string]$CommandName)
     
     $command = Get-Command $CommandName -ErrorAction SilentlyContinue
     return $null -ne $command
@@ -22,39 +19,6 @@ function Test-CommandExists {
 
 # Track created resources for cleanup
 $script:TrackedResources = @()
-
-# Invoke a Kubernetes command with error handling
-function Invoke-KubernetesCommand {
-    param(
-        [string]$Command,
-        [string]$StepName,
-        [bool]$AllowFailure = $false,
-        [bool]$TrackResource = $false
-    )
-    
-    try {
-        Write-Verbose "Executing: $Command"
-        $output = Invoke-Expression $Command -ErrorAction Stop
-        return @{
-            Success = $true
-            Output = $output
-            Error = $null
-        }
-    } catch {
-        $errorMsg = $_.Exception.Message
-        
-        if ($AllowFailure) {
-            return @{
-                Success = $false
-                Output = $null
-                Error = $errorMsg
-                IsAllowed = $true
-            }
-        } else {
-            throw $_
-        }
-    }
-}
 
 # Invoke command with retry logic for transient failures
 function Invoke-CommandWithRetry {
@@ -90,7 +54,7 @@ function Invoke-CommandWithRetry {
 }
 
 # Track a resource for cleanup
-function Track-CreatedResource {
+function Register-CreatedResource {
     param(
         [string]$ResourceType,
         [string]$ResourceName,
@@ -148,21 +112,24 @@ function Invoke-ResourceCleanup {
     foreach ($resource in $script:TrackedResources) {
         try {
             switch ($resource.Type) {
-                "namespace" {
+                "Namespace" {
                     Write-Host "Deleting namespace: $($resource.Name)"
                     kubectl delete namespace $resource.Name --ignore-not-found | Out-Null
                 }
-                "secret" {
+                "Secret" {
                     Write-Host "Deleting secret: $($resource.Name) in $($resource.Namespace)"
                     kubectl delete secret $resource.Name -n $resource.Namespace --ignore-not-found | Out-Null
                 }
-                "helm" {
+                "HelmRelease" {
                     Write-Host "Uninstalling helm release: $($resource.Name) in $($resource.Namespace)"
                     helm uninstall $resource.Name -n $resource.Namespace --ignore-not-found | Out-Null
                 }
-                "cluster" {
-                    Write-Host "Deleting cluster: $($resource.Name)"
+                "K3dCluster" {
+                    Write-Host "Deleting k3d cluster: $($resource.Name)"
                     k3d cluster delete $resource.Name | Out-Null
+                }
+                default {
+                    Write-Host "Skipping cleanup for $($resource.Type): $($resource.Name) (no cleanup handler)"
                 }
             }
         } catch {
@@ -185,10 +152,6 @@ class DeploymentContext {
     [string]$LastError = ""
     [int]$OperationCount = 0
     
-    <#
-    .SYNOPSIS
-    Execute a step with automatic error handling and logging
-    #>
     [void] ExecuteStep([string]$Description, [scriptblock]$CommandBlock) {
         $this.CurrentOperation = $Description
         $this.OperationCount++
@@ -205,38 +168,6 @@ class DeploymentContext {
         }
     }
     
-    <#
-    .SYNOPSIS
-    Ensure a resource exists or create it, with automatic logging and tracking
-    #>
-    [void] EnsureResource([string]$Type, [string]$Name, [scriptblock]$CreateBlock, [string]$Namespace = "") {
-        $key = if ($Namespace) { "$Type/$Namespace/$Name" } else { "$Type/$Name" }
-        
-        if ($this.TrackedResources.ContainsKey($key)) {
-            Log-Info "$Type '$Name' already tracked"
-            return
-        }
-        
-        try {
-            & $CreateBlock
-            $this.TrackedResources[$key] = @{ 
-                Type = $Type
-                Name = $Name
-                Namespace = $Namespace
-                CreatedAt = Get-Date
-            }
-            Track-CreatedResource -ResourceType $Type -ResourceName $Name -Namespace $Namespace
-            Log-Success "$Type '$Name' created"
-        } catch {
-            Log-Error "Failed to create $Type '$Name': $_"
-            throw
-        }
-    }
-    
-    <#
-    .SYNOPSIS
-    Auto-track resources from command output
-    #>
     [void] AutoTrack([string]$ExpectedType, [string]$ResourceName) {
         $this.AutoTrack($ExpectedType, $ResourceName, "")
     }
@@ -251,38 +182,15 @@ class DeploymentContext {
                 Name = $ResourceName
                 Namespace = $Namespace
                 CreatedAt = Get-Date
-                Auto = $true
             }
-            Track-CreatedResource -ResourceType $ExpectedType -ResourceName $ResourceName -Namespace $Namespace
+            Register-CreatedResource -ResourceType $ExpectedType -ResourceName $ResourceName -Namespace $Namespace
         }
     }
     
-    <#
-    .SYNOPSIS
-    Conditionally execute a step when test passes (for step skipping)
-    #>
-    [bool] ExecuteIfMissing([string]$Description, [scriptblock]$TestBlock, [scriptblock]$CommandBlock) {
-        if (& $TestBlock) {
-            Log-Info "$Description (already exists, skipping)"
-            return $false
-        }
-        
-        $this.ExecuteStep($Description, $CommandBlock)
-        return $true
-    }
-    
-    <#
-    .SYNOPSIS
-    Get count of tracked resources
-    #>
     [int] GetTrackedCount() {
         return $this.TrackedResources.Count
     }
     
-    <#
-    .SYNOPSIS
-    Export tracked resources for cleanup
-    #>
     [hashtable] GetTrackedForCleanup() {
         return $this.TrackedResources
     }
@@ -291,107 +199,13 @@ class DeploymentContext {
 # Initialize global deployment context
 $script:deploymentContext = [DeploymentContext]::new()
 
-<#
-.SYNOPSIS
-Get the global deployment context for operation orchestration
-#>
 function Get-DeploymentContext {
     return $script:deploymentContext
 }
 
-<#
-.SYNOPSIS
-Execute a deployment step with automatic error handling
-.DESCRIPTION
-Wraps command execution with logging, error tracking, and resource tracking
-#>
-function Invoke-DeploymentStep {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory)]
-        [string]$Description,
-        
-        [Parameter(Mandatory)]
-        [scriptblock]$CommandBlock,
-        
-        [string]$ResourceType,
-        [string]$ResourceName,
-        [string]$Namespace
-    )
-    
-    $ctx = Get-DeploymentContext
-    Log-StepStart $Description
-    
-    try {
-        & $CommandBlock
-        
-        if ($ResourceType -and $ResourceName) {
-            $ctx.AutoTrack($ResourceType, $ResourceName, $Namespace)
-        }
-        
-        Log-StepComplete $Description
-    } catch {
-        Log-StepFailed "$Description - $_"
-        throw
-    }
-}
-
-<#
-.SYNOPSIS
-Ensure a resource exists or create it with automatic tracking
-.DESCRIPTION
-Tests existence, logs appropriately, creates if missing, tracks creation
-#>
-function Ensure-Resource {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory)]
-        [string]$Type,
-        
-        [Parameter(Mandatory)]
-        [string]$Name,
-        
-        [Parameter(Mandatory)]
-        [scriptblock]$CreateBlock,
-        
-        [scriptblock]$ExistenceTest,
-        
-        [string]$Namespace
-    )
-    
-    $ctx = Get-DeploymentContext
-    
-    # Use provided test or default
-    if ($ExistenceTest) {
-        $exists = & $ExistenceTest
-    } else {
-        $exists = $false
-    }
-    
-    if ($exists) {
-        Log-Info "$Type '$Name' already exists, skipping creation"
-        return
-    }
-    
-    $description = "Create $Type '$Name'"
-    if ($Namespace) {
-        $description += " in namespace '$Namespace'"
-    }
-    
-    $ctx.ExecuteStep($description, $CreateBlock)
-    $ctx.AutoTrack($Type, $Name, $Namespace)
-}
-
 Export-ModuleMember -Function @(
     'Test-CommandExists',
-    'Invoke-KubernetesCommand',
     'Invoke-CommandWithRetry',
-    'Track-CreatedResource',
-    'Get-TrackedResources',
-    'Clear-TrackedResources',
     'Invoke-ResourceCleanup',
-    'Get-DeploymentContext',
-    'Invoke-DeploymentStep',
-    'Ensure-Resource'
+    'Get-DeploymentContext'
 )
-
