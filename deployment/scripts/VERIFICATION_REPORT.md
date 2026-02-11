@@ -374,7 +374,7 @@ kubectl get endpoints -n observability
 
 ### Documentation References
 
-- Configuration details: [CONFIGURATION_MANUAL.md](CONFIGURATION_MANUAL.md)
+- Configuration details: [CONFIGURATION_MANUAL.md](scripts/CONFIGURATION_MANUAL.md)
 - Quick operations: [QUICK_REFERENCE.md](QUICK_REFERENCE.md)
 - Jaeger docs: https://www.jaegertracing.io/docs/latest/
 - Loki docs: https://grafana.com/docs/loki/latest/

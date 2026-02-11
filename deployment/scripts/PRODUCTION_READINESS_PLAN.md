@@ -20,7 +20,7 @@
 ## Completed Items Summary
 
 All P0 (Critical) items and most P1 (Important) items have been implemented.  
-Full configuration details are documented in [CONFIGURATION_MANUAL.md](CONFIGURATION_MANUAL.md).
+Full configuration details are documented in [CONFIGURATION_MANUAL.md](scripts/CONFIGURATION_MANUAL.md).
 
 ### P0 — Critical (All Complete ✅)
 
