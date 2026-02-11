@@ -68,7 +68,7 @@ spec:
       ref: values
     {{- if $app.extraSources }}
     {{- range $src := $app.extraSources }}
-    - {{- toYaml $src | nindent 6 }}
+    - {{ toYaml $src | nindent 6 | trim }}
     {{- end }}
     {{- end }}
   syncPolicy:
