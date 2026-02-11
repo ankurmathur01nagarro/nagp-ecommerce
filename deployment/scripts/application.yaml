@@ -1,47 +1,5 @@
-# AppProject for microservice applications
-apiVersion: argoproj.io/v1alpha1
-kind: AppProject
-metadata:
-  name: nagp-ecom
-  namespace: argocd
-spec:
-  destinations:
-  - name: defaultCluster
-    namespace: nagp-ecom
-    server: https://kubernetes.default.svc
-  sourceRepos:
-  - https://github.com/ankurmathur01nagarro/nagp-ecommerce
----
-# AppProject for observability stack (separate for security isolation)
-apiVersion: argoproj.io/v1alpha1
-kind: AppProject
-metadata:
-  name: observability
-  namespace: argocd
-spec:
-  destinations:
-  - name: defaultCluster
-    namespace: observability
-    server: https://kubernetes.default.svc
-  - name: defaultCluster
-    namespace: istio-system
-    server: https://kubernetes.default.svc
-  # Allow cluster-scoped resources (ClusterRole, ClusterRoleBinding created by Helm charts)
-  - name: defaultCluster
-    namespace: '*'
-    server: https://kubernetes.default.svc
-  clusterResourceWhitelist:
-  - group: ''
-    kind: Namespace
-  - group: rbac.authorization.k8s.io
-    kind: ClusterRole
-  - group: rbac.authorization.k8s.io
-    kind: ClusterRoleBinding
-  - group: apiextensions.k8s.io
-    kind: CustomResourceDefinition
-  sourceRepos:
-  - '*'
----
+# AppProjects are now managed within the argocd-apps chart
+# See: deployment/scripts/apps/values.yaml (argocd-apps.projects)
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:

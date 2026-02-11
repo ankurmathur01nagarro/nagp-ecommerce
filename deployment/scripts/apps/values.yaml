@@ -1,5 +1,7 @@
-project: nagp-ecom
-imgVersion: v1.0.5
+# New values file using official argocd-apps chart format
+# Migration from custom chart to argo/argocd-apps
+
+# Global config for reusability
 config:
   spec:
     destination:
@@ -8,60 +10,232 @@ config:
       repoURL: https://github.com/ankurmathur01nagarro/nagp-ecommerce
       targetRevision: HEAD
 
-observability:
-  project: observability
+# Official argocd-apps chart values
+argocd-apps:
+  # AppProjects - moved from application.yaml
+  projects:
+    nagp-ecom:
+      namespace: argocd
+      description: "Microservice applications"
+      destinations:
+        - name: defaultCluster
+          namespace: nagp-ecom
+          server: https://kubernetes.default.svc
+      sourceRepos:
+        - https://github.com/ankurmathur01nagarro/nagp-ecommerce
 
-applications:
-  - name: nagp-ecom-ui
-    repoPath: ui/deployment
-    syncWave: "5"
-  - name: nagp-ecom-api
-    repoPath: api/deployment
-    syncWave: "5"
+    observability:
+      namespace: argocd
+      description: "Observability stack with security isolation"
+      destinations:
+        - name: defaultCluster
+          namespace: observability
+          server: https://kubernetes.default.svc
+        - name: defaultCluster
+          namespace: istio-system
+          server: https://kubernetes.default.svc
+        - name: defaultCluster
+          namespace: '*'
+          server: https://kubernetes.default.svc
+      clusterResourceWhitelist:
+        - group: ''
+          kind: Namespace
+        - group: rbac.authorization.k8s.io
+          kind: ClusterRole
+        - group: rbac.authorization.k8s.io
+          kind: ClusterRoleBinding
+        - group: apiextensions.k8s.io
+          kind: CustomResourceDefinition
+      sourceRepos:
+        - '*'
 
-helmApplications:
-  - name: loki
-    chart: loki
-    repoURL: https://grafana.github.io/helm-charts
-    chartVersion: "6.52.0"
-    namespace: observability
-    valuesFile: deployment/scripts/helm-loki-values.yaml
-    syncWave: "1"
-  - name: jaeger
-    chart: jaeger
-    repoURL: https://jaegertracing.github.io/helm-charts
-    chartVersion: "4.4.6"
-    namespace: observability
-    valuesFile: deployment/scripts/helm-jaeger-values.yaml
-    syncWave: "1"
-  - name: prometheus
-    chart: prometheus
-    repoURL: https://prometheus-community.github.io/helm-charts
-    chartVersion: "28.9.0"
-    namespace: observability
-    valuesFile: deployment/scripts/helm-prometheus-values.yaml
-    syncWave: "1"
-  - name: alloy
-    chart: alloy
-    repoURL: https://grafana.github.io/helm-charts
-    chartVersion: "1.6.0"
-    namespace: observability
-    valuesFile: deployment/scripts/helm-alloy-values.yaml
-    syncWave: "2"
-    extraSources:
-      - repoURL: https://github.com/ankurmathur01nagarro/nagp-ecommerce
+  # Applications - converted from list to map format
+  applications:
+    # ========================================
+    # Microservice Applications (Git-based)
+    # ========================================
+    nagp-ecom-ui:
+      namespace: argocd
+      additionalAnnotations:
+        argocd.argoproj.io/sync-wave: "5"
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+      project: nagp-ecom
+      source:
+        repoURL: https://github.com/ankurmathur01nagarro/nagp-ecommerce
         targetRevision: HEAD
-        path: deployment/scripts/alloy
-  - name: grafana
-    chart: grafana
-    repoURL: https://grafana-community.github.io/helm-charts
-    chartVersion: "10.5.15"
-    namespace: observability
-    valuesFile: deployment/scripts/helm-grafana-values.yaml
-    syncWave: "3"
+        path: ui/deployment
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: nagp-ecom
+      syncPolicy:
+        syncOptions:
+          - CreateNamespace=true
+        automated:
+          prune: true
+          selfHeal: true
 
-# rawApplications:
-#   - name: istio-telemetry
-#     repoPath: deployment/scripts/istio-telemetry
-#     namespace: istio-system
-#     syncWave: "0"
+    nagp-ecom-api:
+      namespace: argocd
+      additionalAnnotations:
+        argocd.argoproj.io/sync-wave: "5"
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+      project: nagp-ecom
+      source:
+        repoURL: https://github.com/ankurmathur01nagarro/nagp-ecommerce
+        targetRevision: HEAD
+        path: api/deployment
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: nagp-ecom
+      syncPolicy:
+        syncOptions:
+          - CreateNamespace=true
+        automated:
+          prune: true
+          selfHeal: true
+
+    # ========================================
+    # Observability Stack (Helm-based)
+    # ========================================
+    loki:
+      namespace: argocd
+      additionalAnnotations:
+        argocd.argoproj.io/sync-wave: "1"
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+      project: observability
+      sources:
+        - chart: loki
+          repoURL: https://grafana.github.io/helm-charts
+          targetRevision: "6.52.0"
+          helm:
+            valueFiles:
+              - $values/deployment/scripts/observability/loki/helm-loki-values.yaml
+        - repoURL: https://github.com/ankurmathur01nagarro/nagp-ecommerce
+          targetRevision: HEAD
+          ref: values
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: observability
+      syncPolicy:
+        syncOptions:
+          - CreateNamespace=true
+        automated:
+          prune: true
+          selfHeal: true
+
+    jaeger:
+      namespace: argocd
+      additionalAnnotations:
+        argocd.argoproj.io/sync-wave: "1"
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+      project: observability
+      sources:
+        - chart: jaeger
+          repoURL: https://jaegertracing.github.io/helm-charts
+          targetRevision: "4.4.6"
+          helm:
+            valueFiles:
+              - $values/deployment/scripts/observability/jaeger/helm-jaeger-values.yaml
+        - repoURL: https://github.com/ankurmathur01nagarro/nagp-ecommerce
+          targetRevision: HEAD
+          ref: values
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: observability
+      syncPolicy:
+        syncOptions:
+          - CreateNamespace=true
+        automated:
+          prune: true
+          selfHeal: true
+
+    prometheus:
+      namespace: argocd
+      additionalAnnotations:
+        argocd.argoproj.io/sync-wave: "1"
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+      project: observability
+      sources:
+        - chart: prometheus
+          repoURL: https://prometheus-community.github.io/helm-charts
+          targetRevision: "28.9.0"
+          helm:
+            valueFiles:
+              - $values/deployment/scripts/observability/prometheus/helm-prometheus-values.yaml
+        - repoURL: https://github.com/ankurmathur01nagarro/nagp-ecommerce
+          targetRevision: HEAD
+          ref: values
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: observability
+      syncPolicy:
+        syncOptions:
+          - CreateNamespace=true
+        automated:
+          prune: true
+          selfHeal: true
+
+    alloy:
+      namespace: argocd
+      additionalAnnotations:
+        argocd.argoproj.io/sync-wave: "2"
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+      project: observability
+      sources:
+        # Helm chart source
+        - chart: alloy
+          repoURL: https://grafana.github.io/helm-charts
+          targetRevision: "1.6.0"
+          helm:
+            valueFiles:
+              - $values/deployment/scripts/observability/alloy/helm-alloy-values.yaml
+        # Git repo for values file
+        - repoURL: https://github.com/ankurmathur01nagarro/nagp-ecommerce
+          targetRevision: HEAD
+          ref: values
+        # Kustomize ConfigMap source
+        - repoURL: https://github.com/ankurmathur01nagarro/nagp-ecommerce
+          targetRevision: HEAD
+          path: deployment/scripts/observability/alloy
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: observability
+      syncPolicy:
+        syncOptions:
+          - CreateNamespace=true
+        automated:
+          prune: true
+          selfHeal: true
+
+    grafana:
+      namespace: argocd
+      additionalAnnotations:
+        argocd.argoproj.io/sync-wave: "3"
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+      project: observability
+      sources:
+        - chart: grafana
+          repoURL: https://grafana-community.github.io/helm-charts
+          targetRevision: "10.5.15"
+          helm:
+            valueFiles:
+              - $values/deployment/scripts/observability/grafana/helm-grafana-values.yaml
+        - repoURL: https://github.com/ankurmathur01nagarro/nagp-ecommerce
+          targetRevision: HEAD
+          ref: values
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: observability
+      syncPolicy:
+        syncOptions:
+          - CreateNamespace=true
+        automated:
+          prune: true
+          selfHeal: true

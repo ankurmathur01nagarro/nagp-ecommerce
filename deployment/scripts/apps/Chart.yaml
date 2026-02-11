@@ -1,6 +1,11 @@
 apiVersion: v2
 name: nagp-ecom
-description: A Helm chart for ArgoCD applications in Kubernetes
+description: ArgoCD app-of-apps using official argocd-apps chart
 type: application
-version: 0.1.0
-appVersion: "0.0.1"
+version: 0.2.0
+appVersion: "0.0.2"
+
+dependencies:
+  - name: argocd-apps
+    version: "2.0.4"
+    repository: https://argoproj.github.io/argo-helm
