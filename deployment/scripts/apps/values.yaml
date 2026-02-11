@@ -25,43 +25,43 @@ helmApplications:
     repoURL: https://grafana.github.io/helm-charts
     chartVersion: "6.52.0"
     namespace: observability
-    valuesFile: deployment/helm-loki-values.yaml
+    valuesFile: deployment/scripts/helm-loki-values.yaml
     syncWave: "1"
   - name: jaeger
     chart: jaeger
     repoURL: https://jaegertracing.github.io/helm-charts
     chartVersion: "4.4.6"
     namespace: observability
-    valuesFile: deployment/helm-jaeger-values.yaml
+    valuesFile: deployment/scripts/helm-jaeger-values.yaml
     syncWave: "1"
   - name: prometheus
     chart: prometheus
     repoURL: https://prometheus-community.github.io/helm-charts
     chartVersion: "28.9.0"
     namespace: observability
-    valuesFile: deployment/helm-prometheus-values.yaml
+    valuesFile: deployment/scripts/helm-prometheus-values.yaml
     syncWave: "1"
   - name: alloy
     chart: alloy
     repoURL: https://grafana.github.io/helm-charts
     chartVersion: "1.6.0"
     namespace: observability
-    valuesFile: deployment/helm-alloy-values.yaml
+    valuesFile: deployment/scripts/helm-alloy-values.yaml
     syncWave: "2"
     extraSources:
       - repoURL: https://github.com/ankurmathur01nagarro/nagp-ecommerce
         targetRevision: HEAD
-        path: deployment/alloy
+        path: deployment/scripts/alloy
   - name: grafana
     chart: grafana
     repoURL: https://grafana-community.github.io/helm-charts
     chartVersion: "10.5.15"
     namespace: observability
-    valuesFile: deployment/helm-grafana-values.yaml
+    valuesFile: deployment/scripts/helm-grafana-values.yaml
     syncWave: "3"
 
 rawApplications:
   - name: istio-telemetry
-    repoPath: deployment/istio-telemetry
+    repoPath: deployment/scripts/istio-telemetry
     namespace: istio-system
     syncWave: "0"
