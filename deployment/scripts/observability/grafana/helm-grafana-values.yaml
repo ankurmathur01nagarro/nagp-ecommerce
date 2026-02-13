@@ -60,7 +60,12 @@ replicas: 1
 # Persistence for dashboards and alerts (P2-3)
 persistence:
   enabled: true
-  storageClassName: local-path
+  type: pvc
+  existingClaim: grafana-storage  # References PVC from grafana-pvc.yaml
+  mountPath: /var/lib/grafana
+  subPath: grafana  # Use subPath to avoid root permission issues on local-path
+  accessModes:
+    - ReadWriteOnce
   size: 1Gi
 
 # Service type
