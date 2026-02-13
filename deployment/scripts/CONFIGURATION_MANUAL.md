@@ -2,7 +2,7 @@
 
 ## Overview
 
-This manual documents the complete configuration of the observability stack including Grafana Alloy (OTel Collector replacement), Jaeger, Loki, Prometheus, and New Relic integration.
+This manual documents the complete configuration of the observability stack including Grafana Alloy (OTel Collector replacement), Grafana Tempo, Loki, Prometheus, and New Relic integration.
 
 **Deployment Date:** February 8, 2026  
 **Status:** ✅ Production Ready  
@@ -19,7 +19,7 @@ Applications (OTLP Instrumented)
             ↓
     ┌───────┼───────┬──────────┐
     ↓       ↓       ↓          ↓
-  Jaeger  Loki  Prometheus  New Relic
+  Tempo   Loki  Prometheus  New Relic
  (traces) (logs) (metrics)   (Cloud)
                   ↑           ↑
             app metrics    app metrics
@@ -35,7 +35,7 @@ Prometheus also scrapes k8s infra metrics directly:
 
 | Pipeline | Alloy Receiver | Alloy Processors | Alloy Exporters |
 |----------|----------------|-------------------|------------------|
-| **Traces** | `otelcol.receiver.otlp` | `memory_limiter`, `batch "traces"` | `otelcol.exporter.otlp "jaeger"`, `otelcol.exporter.otlphttp "newrelic"` |
+| **Traces** | `otelcol.receiver.otlp` | `memory_limiter`, `batch "traces"` | `otelcol.exporter.otlp "tempo"`, `otelcol.exporter.otlphttp "newrelic"` |
 | **Logs** | `otelcol.receiver.otlp` | `memory_limiter`, `batch "logs"` | `otelcol.exporter.otlphttp "loki"`, `otelcol.exporter.otlphttp "newrelic"` |
 | **Metrics** | `otelcol.receiver.otlp` | `memory_limiter`, `batch "metrics"` | `otelcol.exporter.otlphttp "newrelic"`, `otelcol.exporter.prometheus "prometheus"` → `prometheus.remote_write "prometheus"` |
 
@@ -74,7 +74,7 @@ Alloy uses a component graph instead of YAML pipelines. The config is defined in
 | `otelcol.receiver.otlp "default"` | Receives traces, logs, metrics via gRPC :4317 / HTTP :4318 |
 | `otelcol.processor.memory_limiter "default"` | Prevents OOM (limit_mib: 400) |
 | `otelcol.processor.batch "traces"/"logs"/"metrics"` | Per-signal batching (timeout: 5s, batch: 512) |
-| `otelcol.exporter.otlp "jaeger"` | Sends traces to Jaeger via gRPC |
+| `otelcol.exporter.otlp "tempo"` | Sends traces to Tempo via gRPC |
 | `otelcol.exporter.otlphttp "loki"` | Sends logs to Loki via OTLP HTTP |
 | `otelcol.exporter.otlphttp "newrelic"` | Sends all signals to New Relic |
 | `otelcol.exporter.prometheus "prometheus"` | Converts OTel metrics → Prometheus format |
@@ -88,8 +88,8 @@ HTTP:  http://alloy.observability:4318
 
 #### Exporters
 
-**Jaeger OTLP gRPC Exporter** (`otelcol.exporter.otlp "jaeger"`)
-- **Endpoint:** `jaeger.observability.svc.cluster.local:4317`
+**Tempo OTLP gRPC Exporter** (`otelcol.exporter.otlp "tempo"`)
+- **Endpoint:** `tempo.observability.svc.cluster.local:4317`
 - **Protocol:** OTLP gRPC
 - **TLS:** `insecure = true` (Istio mTLS at mesh layer)
 
@@ -159,48 +159,29 @@ kubectl create secret generic newrelic-otel-secret \
 
 ---
 
-### 2. Jaeger (`helm-jaeger-values.yaml`)
+### 2. Grafana Tempo (`helm-tempo-values.yaml`)
 
-**Purpose:** Distributed tracing backend that stores and queries trace data.
+**Purpose:** Distributed tracing backend — stores, indexes, and queries trace data using TraceQL.
 
 #### Image Configuration
 ```yaml
-jaeger:
-  enabled: true
-  image:
-    repository: jaegertracing/jaeger    # Official Jaeger v2 image
-    tag: "2.14.1"                       # Released v2 version (not v1 EOL)
-    pullPolicy: IfNotPresent
+tempo:
+  repository: grafana/tempo
+  tag: "2.9.0"
+  pullPolicy: IfNotPresent
 ```
 
 **Version Information:**
-- Current: v2.14.1 (Released)
-- v1 reached EOL: December 31, 2025
-- Migration guide: https://www.jaegertracing.io/docs/latest/migration/
+- Current: v2.9.0 (Latest stable)
+- Chart: tempo-1.24.4 (from `grafana.github.io/helm-charts`)
+- Docs: https://grafana.com/docs/tempo/latest/
 
-> **CRITICAL:** Jaeger v2 uses an OTel Collector-based architecture. All v1-style env vars
-> (`MEMORY_MAX_TRACES`, `COLLECTOR_OTLP_ENABLED`, `BADGER_*`) are **silently ignored**.
-> Configuration must use the `userconfig` block with OTel Collector-style YAML.
+#### Key Configuration
 
-#### v2 Configuration (userconfig)
-
-Jaeger v2 is configured via a `userconfig` block that defines extensions, receivers,
-exporters, and pipelines in OTel Collector format:
+Tempo is configured via Helm values that generate the `tempo.yaml` config file:
 
 ```yaml
-userconfig:
-  extensions:
-    healthcheckv2:
-      http:
-        endpoint: "0.0.0.0:13133"
-    jaeger_storage:
-      backends:
-        main_store:
-          memory:
-            max_traces: 5000
-    jaeger_query:
-      storage:
-        traces: main_store
+tempo:
   receivers:
     otlp:
       protocols:
@@ -208,15 +189,17 @@ userconfig:
           endpoint: "0.0.0.0:4317"
         http:
           endpoint: "0.0.0.0:4318"
-  exporters:
-    jaeger_storage_exporter:
-      trace_storage: main_store
-  service:
-    extensions: [healthcheckv2, jaeger_storage, jaeger_query]
-    pipelines:
-      traces:
-        receivers: [otlp]
-        exporters: [jaeger_storage_exporter]
+  retention: 24h
+  storage:
+    trace:
+      backend: local
+      local:
+        path: /var/tempo/traces
+      wal:
+        path: /var/tempo/wal
+  metricsGenerator:
+    enabled: true
+    remoteWriteUrl: "http://prometheus-server.observability.svc.cluster.local:80/api/v1/write"
 ```
 
 #### Service Ports
@@ -225,60 +208,51 @@ userconfig:
 |------|----------|---------|
 | 4317 | gRPC | OTLP receiver |
 | 4318 | HTTP | OTLP receiver |
-| 13133 | HTTP | Health check (v2 healthcheckv2 extension) |
-| 14250 | gRPC | Jaeger/OTel receiver (all-in-one) |
-| 16686 | HTTP | Query UI |
-| 16685 | gRPC | Query gRPC |
-| 6831 | UDP | Jaeger compact thrift |
-| 6832 | UDP | Jaeger binary thrift |
-| 9411 | HTTP | Zipkin receiver |
+| 3200 | HTTP | Tempo API + health (`/ready`) |
 
 #### Health Checks
 
-Jaeger v2 uses the `healthcheckv2` extension on **port 13133** (not 14269 from v1):
-
+Tempo exposes `/ready` on port 3200:
 ```yaml
-# The Helm chart auto-configures probes based on userconfig.
-# If customizing, use port 13133:
 livenessProbe:
   httpGet:
-    path: /status
-    port: 13133
+    path: /ready
+    port: 3200
 readinessProbe:
   httpGet:
-    path: /status
-    port: 13133
+    path: /ready
+    port: 3200
 ```
-
-> **Important:** Port 14269 was the v1 admin server health endpoint. In v2, it does not exist.
 
 #### Storage Configuration
 
-**Current:** In-memory storage (max_traces: 5000)
-- Suitable for: Development, testing, short-term tracing
-- Limitation: Data lost on pod restart
+**Current:** Local filesystem with WAL
+- Suitable for: Development, testing, single-node
+- Limitation: Data lost if PVC is deleted
 
-**For Production:** Switch to Elasticsearch or BadgerDB backend:
+**For Production:** Switch to object storage (S3, GCS, Azure Blob):
 ```yaml
-# Elasticsearch example (in userconfig.extensions.jaeger_storage.backends):
-main_store:
-  elasticsearch:
-    server_urls: ["http://elasticsearch:9200"]
-    index_prefix: "jaeger"
-
-# BadgerDB example (persistent on-disk):
-main_store:
-  badger:
-    directory_key: "/badger/key"
-    directory_value: "/badger/data"
+tempo:
+  storage:
+    trace:
+      backend: s3
+      s3:
+        bucket: tempo-traces
+        endpoint: s3.amazonaws.com
+        region: eu-west-1
 ```
+
+#### Metrics Generator
+
+Tempo's metrics generator derives RED metrics (Rate, Errors, Duration) from ingested traces and remote-writes them to Prometheus. This enables service maps and span metrics in Grafana without additional instrumentation.
 
 #### Security Context
 ```yaml
-jaeger:
-  podSecurityContext:
-    runAsNonRoot: true
-    runAsUser: 10001       # Matches Jaeger v2 Docker image UID
+securityContext:
+  fsGroup: 10001
+  runAsGroup: 10001
+  runAsNonRoot: true
+  runAsUser: 10001
 ```
 
 ---
@@ -501,7 +475,7 @@ Kubelet / cAdvisor / node-exporter → Prometheus scrape jobs → stored locally
 
 ### 5. Grafana (`helm-grafana-values.yaml`)
 
-**Purpose:** Unified dashboarding UI with pre-configured datasources for Jaeger, Loki, and Prometheus.
+**Purpose:** Unified dashboarding UI with pre-configured datasources for Tempo, Loki, and Prometheus.
 
 **Chart:** `grafana/grafana` (migrating to `grafana-community/grafana` after Jan 30, 2026)
 
@@ -538,9 +512,9 @@ Persists dashboards, preferences, and annotations across pod restarts.
 datasources:
   datasources.yaml:
     datasources:
-      - name: Jaeger
-        type: jaeger
-        url: http://jaeger.observability.svc.cluster.local:16686
+      - name: Tempo
+        type: tempo
+        url: http://tempo.observability.svc.cluster.local:3200
       - name: Loki
         type: loki
         url: http://loki.observability.svc.cluster.local:3100
@@ -1044,7 +1018,7 @@ spec:
 
 | Component | Image | Chart Version | Status |
 |-----------|-------|---------------|--------|
-| Jaeger | `jaegertracing/jaeger:2.14.1` | jaeger-4.4.6 | ✅ Supported |
+| Grafana Tempo | `grafana/tempo:2.9.0` | tempo-1.24.4 | ✅ Supported |
 | Loki | `grafana/loki:3.6.4` | loki-6.52.0 | ✅ Supported (official `grafana` repo) |
 | Grafana Alloy | `grafana/alloy:v1.13.0` | alloy-1.6.0 | ✅ Supported (replaces OTel Collector) |
 | Prometheus | `quay.io/prometheus/prometheus:v3.9.1` | prometheus-28.9.0 | ✅ Supported |

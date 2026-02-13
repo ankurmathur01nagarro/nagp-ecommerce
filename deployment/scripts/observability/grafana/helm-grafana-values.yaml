@@ -1,7 +1,7 @@
 # Grafana Helm Values for Observability Stack
 # Chart: grafana-community/grafana (migrated from grafana/grafana after Jan 30, 2026)
 # Ref: https://github.com/grafana-community/helm-charts
-# Provides unified UI for Loki (logs), Jaeger (traces), and Prometheus (metrics)
+# Provides unified UI for Loki (logs), Tempo (traces), and Prometheus (metrics)
 
 # Admin credentials via Kubernetes secret (P1-7: do NOT hardcode in values)
 # Create secret: kubectl create secret generic grafana-admin-secret --from-literal=admin-user=admin --from-literal=admin-password=<strong-password> -n observability
@@ -23,11 +23,21 @@ datasources:
         jsonData:
           maxLines: 1000
 
-      - name: Jaeger
-        type: jaeger
+      - name: Tempo
+        type: tempo
         access: proxy
-        url: http://jaeger:16686
+        url: http://tempo:3200
         isDefault: false
+        jsonData:
+          tracesToLogsV2:
+            datasourceUid: loki
+            filterByTraceID: true
+          tracesToMetrics:
+            datasourceUid: prometheus
+          nodeGraph:
+            enabled: true
+          serviceMap:
+            datasourceUid: prometheus
 
       - name: Prometheus
         type: prometheus

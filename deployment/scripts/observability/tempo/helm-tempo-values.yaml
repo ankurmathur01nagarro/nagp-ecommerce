@@ -1,0 +1,79 @@
+# Grafana Tempo Helm Chart Configuration
+#
+# Tempo single-binary mode for distributed tracing.
+# Part of the Grafana OSS observability stack (Alloy, Loki, Tempo, Prometheus, Grafana).
+#
+# Chart: grafana/tempo (v1.24.4), appVersion: 2.9.0
+# Docs: https://grafana.com/docs/tempo/latest/
+# Helm: https://github.com/grafana/helm-charts/tree/main/charts/tempo
+
+# Single replica for local dev
+replicas: 1
+
+# Tempo application configuration
+tempo:
+  repository: grafana/tempo
+  tag: "2.9.0"
+  pullPolicy: IfNotPresent
+
+  # Receivers — accept OTLP traces from Alloy
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: "0.0.0.0:4317"
+        http:
+          endpoint: "0.0.0.0:4318"
+
+  # Retention — how long to keep traces
+  retention: 24h
+
+  # Storage — local filesystem (dev); switch to S3/GCS for production
+  storage:
+    trace:
+      backend: local
+      local:
+        path: /var/tempo/traces
+      wal:
+        path: /var/tempo/wal
+
+  # Metrics generator — generates RED metrics from traces
+  metricsGenerator:
+    enabled: true
+    remoteWriteUrl: "http://prometheus-server.observability.svc.cluster.local:80/api/v1/write"
+
+  # Resource limits
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  # Security context — matches chart defaults (UID 10001)
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    runAsGroup: 10001
+
+# Pod-level security context
+securityContext:
+  fsGroup: 10001
+  runAsGroup: 10001
+  runAsNonRoot: true
+  runAsUser: 10001
+
+# Persistence — enable for data durability across restarts
+persistence:
+  enabled: true
+  storageClassName: local-path
+  size: 5Gi
+
+# Service configuration
+service:
+  type: ClusterIP
+
+# tempoQuery sidecar — not needed, Grafana queries Tempo directly
+tempoQuery:
+  enabled: false

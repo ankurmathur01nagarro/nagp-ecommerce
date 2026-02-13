@@ -28,10 +28,10 @@ otelcol.exporter.otlphttp "newrelic" {
   }
 }
 
-// Jaeger — traces only (OTLP gRPC)
-otelcol.exporter.otlp "jaeger" {
+// Tempo — traces only (OTLP gRPC)
+otelcol.exporter.otlp "tempo" {
   client {
-    endpoint = "jaeger.observability.svc.cluster.local:4317"
+    endpoint = "tempo.observability.svc.cluster.local:4317"
     tls {
       insecure = true  // internal: Istio mTLS encrypts at mesh layer
     }
@@ -70,7 +70,7 @@ otelcol.processor.batch "traces" {
   timeout         = "5s"
   send_batch_size = 512
   output {
-    traces = [otelcol.exporter.otlp.jaeger.input, otelcol.exporter.otlphttp.newrelic.input]
+    traces = [otelcol.exporter.otlp.tempo.input, otelcol.exporter.otlphttp.newrelic.input]
   }
 }
 

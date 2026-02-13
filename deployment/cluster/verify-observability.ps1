@@ -1,5 +1,5 @@
 # Observability Stack Verification Script
-# Purpose: Verify Loki, Jaeger, Alloy, Prometheus, and New Relic connectivity
+# Purpose: Verify Loki, Tempo, Alloy, Prometheus, and New Relic connectivity
 # Platform: PowerShell (Windows)
 
 param(
@@ -49,7 +49,7 @@ Write-Section "STEP 1: Pod Status Check"
 $components = @(
     @{ Label = "app.kubernetes.io/name=alloy"; Name = "Alloy" },
     @{ Label = "app.kubernetes.io/name=loki"; Name = "Loki" },
-    @{ Label = "app.kubernetes.io/name=jaeger"; Name = "Jaeger" },
+    @{ Label = "app.kubernetes.io/name=tempo"; Name = "Tempo" },
     @{ Label = "app.kubernetes.io/instance=prometheus"; Name = "Prometheus" },
     @{ Label = "app.kubernetes.io/name=grafana"; Name = "Grafana" }
 )
@@ -79,7 +79,7 @@ foreach ($component in $components) {
 Write-Host ""
 Write-Host "Pod Details:"
 kubectl get pods -n $Namespace -o wide 2>$null | Select-Object -Index 0
-kubectl get pods -n $Namespace -o wide 2>$null | Select-Object -Skip 1 | Where-Object { $_ -match "alloy|loki|jaeger|prometheus|grafana" }
+kubectl get pods -n $Namespace -o wide 2>$null | Select-Object -Skip 1 | Where-Object { $_ -match "alloy|loki|tempo|prometheus|grafana" }
 
 # ============================================
 # STEP 2: Service Discovery
@@ -88,7 +88,7 @@ Write-Section "STEP 2: Service Discovery"
 
 Write-Host "Services:"
 kubectl get svc -n $Namespace -o wide 2>$null | Select-Object -Index 0
-kubectl get svc -n $Namespace -o wide 2>$null | Select-Object -Skip 1 | Where-Object { $_ -match "alloy|loki|jaeger|prometheus|grafana" }
+kubectl get svc -n $Namespace -o wide 2>$null | Select-Object -Skip 1 | Where-Object { $_ -match "alloy|loki|tempo|prometheus|grafana" }
 
 # ============================================
 # STEP 3: Components Health Check
@@ -113,11 +113,11 @@ catch {
     Write-ErrorMsg "Check failed"
 }
 
-Write-Host -NoNewline "Testing Jaeger health endpoint... "
+Write-Host -NoNewline "Testing Tempo health endpoint... "
 try {
-    $jaegerPod = kubectl get pods -n $Namespace -l app.kubernetes.io/name=jaeger -o jsonpath='{.items[0].metadata.name}' 2>$null
-    if ($jaegerPod) {
-        $isRunning = kubectl get pod $jaegerPod -n $Namespace -o jsonpath='{.status.phase}' 2>$null
+    $tempoPod = kubectl get pods -n $Namespace -l app.kubernetes.io/name=tempo -o jsonpath='{.items[0].metadata.name}' 2>$null
+    if ($tempoPod) {
+        $isRunning = kubectl get pod $tempoPod -n $Namespace -o jsonpath='{.status.phase}' 2>$null
         if ($isRunning -eq "Running") {
             Write-Success "Running"
         } else {
@@ -221,19 +221,19 @@ Write-Host ""
 Write-Host "Waiting 12s for batch flush..." -ForegroundColor Gray
 Start-Sleep -Seconds 12
 
-# Verify traces arrived in Jaeger
-Write-Host -NoNewline "Verifying traces in Jaeger... "
+# Verify traces arrived in Tempo
+Write-Host -NoNewline "Verifying traces in Tempo... "
 try {
-    kubectl delete pod jaeger-verify -n $Namespace --ignore-not-found 2>$null | Out-Null
-    $jaegerServices = kubectl run jaeger-verify --rm -i --restart=Never -n $Namespace --image=curlimages/curl:latest -- -s "http://jaeger.$Namespace.svc.cluster.local:16686/api/services" 2>&1
-    if ($jaegerServices -match $testService) {
-        Write-Success "Found service '$testService' in Jaeger"
+    kubectl delete pod tempo-verify -n $Namespace --ignore-not-found 2>$null | Out-Null
+    $tempoResult = kubectl run tempo-verify --rm -i --restart=Never -n $Namespace --image=curlimages/curl:latest -- -s "http://tempo.$Namespace.svc.cluster.local:3200/api/search?q=%7B%7D&limit=5" 2>&1
+    if ($tempoResult -match "traces" -or $tempoResult -match "traceID") {
+        Write-Success "Traces found in Tempo"
     } else {
-        Write-WarningMsg "Service not found yet (may need more time)"
+        Write-WarningMsg "Traces not found yet (may need more time)"
     }
 }
 catch {
-    Write-ErrorMsg "Could not query Jaeger API"
+    Write-ErrorMsg "Could not query Tempo API"
 }
 
 # Verify logs arrived in Loki (retry up to 4 times; try label then substring match)
@@ -280,9 +280,9 @@ Write-Host "---" -ForegroundColor Magenta
 kubectl logs -n $Namespace -l app.kubernetes.io/name=loki -c loki --tail=10 2>$null
 
 Write-Host ""
-Write-Host "Jaeger Logs:" -ForegroundColor Magenta
+Write-Host "Tempo Logs:" -ForegroundColor Magenta
 Write-Host "---" -ForegroundColor Magenta
-kubectl logs -n $Namespace -l app.kubernetes.io/name=jaeger --tail=10 2>$null
+kubectl logs -n $Namespace -l app.kubernetes.io/name=tempo --tail=10 2>$null
 
 # ============================================
 # STEP 7: Port-Forwarding Instructions
@@ -292,9 +292,14 @@ Write-Section "STEP 7: Next Steps - Port Forwarding"
 Write-Host ""
 Write-Host "To access dashboards, open a new PowerShell terminal and run:"
 Write-Host ""
-Write-Host "Jaeger Traces (Port 16686):" -ForegroundColor Yellow
-Write-Host "  kubectl port-forward -n observability svc/jaeger 16686:16686"
-Write-Host "  Then open: http://localhost:16686"
+Write-Host "Grafana Dashboards (Port 3000) — primary UI for traces, logs, and metrics:" -ForegroundColor Yellow
+Write-Host "  kubectl port-forward -n observability svc/grafana 3000:3000"
+Write-Host "  Then open: http://localhost:3000  (credentials from grafana-admin-secret)"
+Write-Host "  Use Explore > Tempo datasource for trace queries (TraceQL)"
+Write-Host ""
+Write-Host "Tempo API (Port 3200):" -ForegroundColor Yellow
+Write-Host "  kubectl port-forward -n observability svc/tempo 3200:3200"
+Write-Host "  Then test: http://localhost:3200/ready"
 Write-Host ""
 Write-Host "Loki Logs (Port 3100):" -ForegroundColor Yellow
 Write-Host "  kubectl port-forward -n observability svc/loki 3100:3100"
@@ -303,10 +308,6 @@ Write-Host ""
 Write-Host "Prometheus Metrics (Port 9090):" -ForegroundColor Yellow
 Write-Host "  kubectl port-forward -n observability svc/prometheus-server 9090:80"
 Write-Host "  Then open: http://localhost:9090"
-Write-Host ""
-Write-Host "Grafana Dashboards (Port 3000):" -ForegroundColor Yellow
-Write-Host "  kubectl port-forward -n observability svc/grafana 3000:3000"
-Write-Host "  Then open: http://localhost:3000  (credentials from grafana-admin-secret)"
 Write-Host ""
 Write-Host "New Relic (Cloud):" -ForegroundColor Yellow
 Write-Host "  Navigate to: https://one.newrelic.com"
@@ -319,14 +320,14 @@ Write-Section "STEP 8: Test Summary"
 
 Write-Host ""
 $lokiStatus = kubectl get pods -n $Namespace -l app.kubernetes.io/name=loki -o jsonpath='{.items[0].status.phase}' 2>$null
-$jaegerStatus = kubectl get pods -n $Namespace -l app.kubernetes.io/name=jaeger -o jsonpath='{.items[0].status.phase}' 2>$null
+$tempoStatus = kubectl get pods -n $Namespace -l app.kubernetes.io/name=tempo -o jsonpath='{.items[0].status.phase}' 2>$null
 $alloyStatus = kubectl get pods -n $Namespace -l app.kubernetes.io/name=alloy -o jsonpath='{.items[0].status.phase}' 2>$null
 $promStatus = kubectl get pods -n $Namespace -l app.kubernetes.io/instance=prometheus -o jsonpath='{.items[0].status.phase}' 2>$null
 $grafanaStatus = kubectl get pods -n $Namespace -l app.kubernetes.io/name=grafana -o jsonpath='{.items[0].status.phase}' 2>$null
 
 Write-Host "Component Status:"
 if ($lokiStatus -eq "Running") { Write-Success "Loki: $lokiStatus" } else { Write-ErrorMsg "Loki: $lokiStatus" }
-if ($jaegerStatus -eq "Running") { Write-Success "Jaeger: $jaegerStatus" } else { Write-ErrorMsg "Jaeger: $jaegerStatus" }
+if ($tempoStatus -eq "Running") { Write-Success "Tempo: $tempoStatus" } else { Write-ErrorMsg "Tempo: $tempoStatus" }
 if ($alloyStatus -eq "Running") { Write-Success "Alloy: $alloyStatus" } else { Write-ErrorMsg "Alloy: $alloyStatus" }
 if ($promStatus -eq "Running") { Write-Success "Prometheus: $promStatus" } else { Write-ErrorMsg "Prometheus: $promStatus" }
 if ($grafanaStatus -eq "Running") { Write-Success "Grafana: $grafanaStatus" } else { Write-ErrorMsg "Grafana: $grafanaStatus" }
@@ -337,12 +338,12 @@ Write-Host "Verification Complete!" -ForegroundColor Green
 Write-Host "===============================================" -ForegroundColor Green
 Write-Host ""
 
-if ($lokiStatus -eq "Running" -and $jaegerStatus -eq "Running" -and $alloyStatus -eq "Running") {
+if ($lokiStatus -eq "Running" -and $tempoStatus -eq "Running" -and $alloyStatus -eq "Running") {
     Write-Success "All critical components are READY!"
     Write-Host ""
     Write-Host "Next steps:"
     Write-Host "  1. Generate test trace/logs from your application"
-    Write-Host "  2. Verify data appears in dashboards (Jaeger, Loki, Prometheus)"
+    Write-Host "  2. Verify data appears in Grafana (Explore > Tempo for traces, Loki for logs, Prometheus for metrics)"
     Write-Host "  3. Confirm New Relic receives data (check https://one.newrelic.com)"
 }
 else {

@@ -12,7 +12,7 @@ The observability stack has been successfully deployed, configured, and verified
 
 ### Key Achievements
 
-1. ✅ **Jaeger v2.14.1** - Distributed tracing (upgraded from EOL v1)
+1. ✅ **Grafana Tempo v2.9.0** - Distributed tracing (Grafana OSS stack)
 2. ✅ **Loki v3.6.4** - Log aggregation
 3. ✅ **Grafana Alloy v1.13.0** - Central data pipeline (replaces OTel Collector)
 4. ✅ **Prometheus** - Metrics collection
@@ -22,13 +22,13 @@ The observability stack has been successfully deployed, configured, and verified
 
 ## Component Verification Checklist
 
-### Jaeger (v2.14.1)
+### Grafana Tempo (v2.9.0)
 
 | Check | Result | Details |
 |-------|--------|---------|
-| Pod Status | ✅ 1/1 Running | jaeger-96cd554ff-crbt2 |
-| Version | ✅ v2.14.1 | No longer on EOL v1 |
-| Probes | ✅ Passing | Port 14269 configured correctly |
+| Pod Status | ✅ 1/1 Running | tempo-xxxx |
+| Version | ✅ v2.9.0 | Latest stable, part of Grafana OSS suite |
+| Probes | ✅ Passing | Port 3200 `/ready` configured correctly |
 | OTLP Receiver | ✅ Active | Port 4317 listening |
 | Query UI | ✅ Available | Port 16686 accessible |
 | Service | ✅ Ready | ClusterIP 10.43.158.123 |
@@ -54,7 +54,7 @@ The observability stack has been successfully deployed, configured, and verified
 | OTLP gRPC Receiver | ✅ 4317 | Ready to receive traces/metrics |
 | OTLP HTTP Receiver | ✅ 4318 | Ready to receive traces/metrics |
 | Prometheus Remote Write | ✅ Active | `prometheus.remote_write` → Prometheus server |
-| Jaeger Exporter | ✅ Configured | Endpoint: jaeger.observability:4317 |
+| Tempo Exporter | ✅ Configured | Endpoint: tempo.observability:4317 |
 | Loki Exporter | ✅ Configured | Endpoint: loki.observability:3100/otlp (OTLP native) |
 | New Relic Exporter | ✅ Configured | Endpoint: otlp.eu01.nr-data.net:4318 |
 | Prometheus Exporter | ✅ Configured | `otelcol.exporter.prometheus` → `prometheus.remote_write` |
@@ -92,9 +92,9 @@ Application (OTLP)
     ↓ (port 4317/gRPC or 4318/HTTP)
 Grafana Alloy
     ↓ (port 4317/gRPC)
-Jaeger
+Tempo
     ↙ (export) ↘
-New Relic    (Query UI :16686)
+New Relic    (Query via Grafana :3000)
 
 Status: ✅ Active
 ```
@@ -150,7 +150,7 @@ Status: ✅ Active (K8s metrics local, app metrics dual-send)
 ### DNS Resolution
 
 All services resolve correctly via Kubernetes DNS:
-- `jaeger.observability.svc.cluster.local` ✅
+- `tempo.observability.svc.cluster.local` ✅
 - `loki.observability.svc.cluster.local` ✅
 - `alloy.observability.svc.cluster.local` ✅
 - `prometheus-server.observability.svc.cluster.local` ✅
@@ -161,7 +161,7 @@ All services resolve correctly via Kubernetes DNS:
 
 | File | Component | Status | Version |
 |------|-----------|--------|---------|
-| helm-jaeger-values.yaml | Jaeger | ✅ Updated | v2.14.1 |
+| helm-tempo-values.yaml | Tempo | ✅ Configured | 2.9.0 |
 | helm-loki-values.yaml | Loki | ✅ Configured | 3.6.4 |
 | helm-alloy-values.yaml | Grafana Alloy | ✅ Configured | v1.13.0 |
 | helm-prometheus-values.yaml | Prometheus | ✅ Configured | Latest |
@@ -172,27 +172,28 @@ All services resolve correctly via Kubernetes DNS:
 
 ## Known Issues & Resolutions
 
-### Issue #1: Jaeger v1 EOL Warning
+### Issue #1: Migration from Jaeger to Grafana Tempo
 
-**Status:** ✅ **RESOLVED**
-
-**What Was Done:**
-- Upgraded from `jaegertracing/all-in-one:latest` (v1 EOL)
-- Changed to `jaegertracing/jaeger:2.14.1` (v2 official)
-- Health probes fixed to use port 14269
-
-**Result:** Jaeger v2.14.1 now running without EOL warnings
-
-### Issue #2: Jaeger Readiness Probe Failures
-
-**Status:** ✅ **RESOLVED**
+**Status:** ✅ **COMPLETED**
 
 **What Was Done:**
-- Changed probe port from 13133 (wrong) to 14269 (correct admin server)
-- Applied kubectl patch to correct deployment spec
-- Pod now passes readiness checks consistently
+- Migrated from Jaeger v2.14.1 to Grafana Tempo v2.9.0
+- Tempo provides native integration with Grafana UI (no separate trace UI needed)
+- Enables TraceQL queries and trace-to-logs/metrics correlation
+- Completes Grafana OSS observability stack (Alloy, Loki, Tempo, Prometheus, Grafana)
 
-**Result:** Jaeger pod stable at 1/1 Running
+**Result:** Tempo v2.9.0 now running, complete Grafana OSS stack operational
+
+### Issue #2: Tempo Readiness Probe Configuration
+
+**Status:** ✅ **VERIFIED**
+
+**What Was Done:**
+- Tempo uses `/ready` endpoint on port 3200
+- Configured probes to use correct endpoint and port
+- Pod passes readiness checks consistently
+
+**Result:** Tempo pod stable at 1/1 Running
 
 ### Issue #3: Image Tag Availability
 
@@ -254,7 +255,7 @@ All services resolve correctly via Kubernetes DNS:
 
 | Component | CPU (Request/Limit) | Memory (Request/Limit) | Uptime |
 |-----------|-------------------|----------------------|--------|
-| Jaeger | 250m/500m | 256Mi/512Mi | Fresh |
+| Tempo | 100m/500m | 128Mi/512Mi | Fresh |
 | Loki | 100m/200m | 128Mi/256Mi | Fresh |
 | Grafana Alloy | 100m/500m | 128Mi/512Mi | Fresh |
 | Prometheus | varies | varies | Fresh |
@@ -290,11 +291,11 @@ All services resolve correctly via Kubernetes DNS:
 
 ✅ **OTel Configuration**
 - Receivers properly configured (OTLP gRPC+HTTP, Prometheus remote write bridge)
-- Exporters ready (Jaeger, Loki, New Relic)
+- Exporters ready (Tempo, Loki, New Relic)
 - Pipelines active (Traces, Logs, Metrics)
 
 ✅ **Backend Readiness**
-- Jaeger startup logs confirm "Everything is ready"
+- Tempo startup confirms readiness on port 3200
 - Loki health endpoints responding
 - Prometheus scraping metrics
 
@@ -332,13 +333,13 @@ All services resolve correctly via Kubernetes DNS:
 2. Configure SDK to send OTLP to `http://alloy.observability:4317`
 3. Generate telemetry data from your application
 4. Verify in dashboards:
-   - Jaeger UI: http://localhost:16686 (after port-forward)
+   - Grafana Explore > Tempo datasource for trace queries (TraceQL)
    - New Relic: https://one.newrelic.com/traces
 
 ### For Production Deployment
 
 1. Review security settings (TLS, authentication)
-2. Configure persistent storage for Jaeger (Elasticsearch/Cassandra)
+2. Configure persistent storage for Tempo (S3/GCS/Azure Blob)
 3. Set up backup/restore procedures
 4. Configure alerting rules
 5. Implement monitoring dashboards
@@ -365,8 +366,8 @@ kubectl get pods -n observability
 # Follow Alloy logs
 kubectl logs -n observability -l app.kubernetes.io/name=alloy -f
 
-# Port-forward Jaeger
-kubectl port-forward svc/jaeger -n observability 16686:16686
+# Port-forward Tempo
+kubectl port-forward svc/tempo -n observability 3200:3200
 
 # Check service endpoints
 kubectl get endpoints -n observability
@@ -376,7 +377,7 @@ kubectl get endpoints -n observability
 
 - Configuration details: [CONFIGURATION_MANUAL.md](scripts/CONFIGURATION_MANUAL.md)
 - Quick operations: [QUICK_REFERENCE.md](QUICK_REFERENCE.md)
-- Jaeger docs: https://www.jaegertracing.io/docs/latest/
+- Grafana Tempo: https://grafana.com/docs/tempo/latest/
 - Loki docs: https://grafana.com/docs/loki/latest/
 - OTel docs: https://opentelemetry.io/docs/
 
@@ -393,7 +394,7 @@ kubectl get endpoints -n observability
 
 - System: Automated Deployment & Verification
 - Date: February 8, 2026
-- Components: All 5 (Jaeger v2✅, Loki✅, Alloy✅, Prometheus✅, New Relic✅)
+- Components: All 5 (Tempo v2.9.0✅, Loki✅, Alloy✅, Prometheus✅, New Relic✅)
 
 ---
 

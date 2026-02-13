@@ -126,7 +126,7 @@ argocd-apps:
           prune: true
           selfHeal: true
 
-    jaeger:
+    tempo:
       namespace: argocd
       additionalAnnotations:
         argocd.argoproj.io/sync-wave: "1"
@@ -134,12 +134,12 @@ argocd-apps:
         - resources-finalizer.argocd.argoproj.io
       project: observability
       sources:
-        - chart: jaeger
-          repoURL: https://jaegertracing.github.io/helm-charts
-          targetRevision: "4.4.6"
+        - chart: tempo
+          repoURL: https://grafana.github.io/helm-charts
+          targetRevision: "1.24.4"
           helm:
             valueFiles:
-              - $values/deployment/scripts/observability/jaeger/helm-jaeger-values.yaml
+              - $values/deployment/scripts/observability/tempo/helm-tempo-values.yaml
         - repoURL: https://github.com/ankurmathur01nagarro/nagp-ecommerce
           targetRevision: HEAD
           ref: values

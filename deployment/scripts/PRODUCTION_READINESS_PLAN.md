@@ -26,7 +26,7 @@ Full configuration details are documented in [CONFIGURATION_MANUAL.md](scripts/C
 
 | ID | Item | Resolution | Helm Rev |
 |----|------|------------|----------|
-| P0-1 | Jaeger v2 config used invalid v1-style env vars | Complete rewrite to `userconfig` block (OTel Collector-style YAML) with `jaeger_storage`, `healthcheckv2` on port 13133, `max_traces: 5000` | jaeger rev 12 |
+| P0-1 | Migrated from Jaeger to Grafana Tempo | Replaced Jaeger v2.14.1 with Tempo v2.9.0 for complete Grafana OSS stack | tempo rev 1 |
 | P0-2 | Debug exporter active on all pipelines | Removed `debug` from all pipeline exporters (commented out for dev troubleshooting) | alloy rev 1 |
 | P0-3 | No `memory_limiter` processor | Added `memory_limiter` (limit_mib: 400, spike_limit_mib: 100) as first processor in all pipelines + `GOMEMLIMIT=400MiB` env var | alloy rev 1 |
 | P0-4 | 100% trace sampling rate | Reduced `randomSamplingPercentage` from 100 to 5 in Istio Telemetry | kubectl applied |
@@ -39,7 +39,7 @@ Full configuration details are documented in [CONFIGURATION_MANUAL.md](scripts/C
 | P1-1 | Loki has no retention policy | Added `retention_period: 168h` + compactor with `retention_enabled: true`, `working_directory: /var/loki/compactor` | loki rev 2 |
 | P1-2 | Prometheus has no resource limits | Added resources (250m/1 CPU, 512Mi/2Gi memory), `retention: 15d`, `retentionSize: 8GB` | prometheus rev 9 |
 | P1-4 | TLS disabled on New Relic exporter | Removed `tls.insecure: true` from New Relic exporter (defaults to secure TLS). Internal exporters keep `insecure: true` (Istio mTLS at mesh layer) | alloy rev 1 |
-| P1-5 | Jaeger runs as root (UID 0) | Added `runAsNonRoot: true, runAsUser: 10001` (matches Jaeger v2 Dockerfile) | jaeger rev 12 |
+| P1-5 | Tempo runs as root (UID 0) | Added `runAsNonRoot: true, runAsUser: 10001` (matches Tempo Docker image default) | tempo rev 1 |
 | P1-7 | Grafana hardcoded credentials | Replaced `adminUser/adminPassword` with `admin.existingSecret: grafana-admin-secret` | grafana rev 2 |
 
 ### P2 — Recommended (Partially Complete)
@@ -99,7 +99,7 @@ Every component has `replicas: 1`. Any pod restart = downtime for that signal.
 | Component | Dev Replicas | Prod Replicas | Notes |
 |---|---|---|---|
 | Grafana Alloy | 1 | 2–3 | Stateless, easy to scale |
-| Jaeger | 1 | 2+ (with shared storage) | Requires Elasticsearch or shared BadgerDB |
+| Tempo | 1 | 2+ (with shared storage) | Requires object storage (S3/GCS/Azure Blob) |
 | Loki | 1 (SingleBinary) | 3 (read/write/backend) | Switch to microservices mode |
 | Prometheus | 1 | 2 (with Thanos sidecar) | Or use kube-prometheus-stack |
 | Grafana | 1 | 2+ | With shared DB for dashboards |
