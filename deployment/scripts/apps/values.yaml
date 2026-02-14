@@ -220,10 +220,22 @@ argocd-apps:
       finalizers:
         - resources-finalizer.argocd.argoproj.io
       project: observability
-      source:
-        repoURL: https://github.com/ankurmathur01nagarro/nagp-ecommerce
-        targetRevision: HEAD
-        path: deployment/scripts/observability/grafana
+      sources:
+        # Kustomize source for PVC
+        - repoURL: https://github.com/ankurmathur01nagarro/nagp-ecommerce
+          targetRevision: HEAD
+          path: deployment/scripts/observability/grafana
+        # Helm chart source
+        - chart: grafana
+          repoURL: https://grafana-community.github.io/helm-charts
+          targetRevision: "10.5.15"
+          helm:
+            valueFiles:
+              - $values/deployment/scripts/observability/grafana/base/helm-grafana-values.yaml
+        # Git repo for values file reference
+        - repoURL: https://github.com/ankurmathur01nagarro/nagp-ecommerce
+          targetRevision: HEAD
+          ref: values
       destination:
         server: https://kubernetes.default.svc
         namespace: observability

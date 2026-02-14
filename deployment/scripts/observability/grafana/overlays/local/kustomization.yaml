@@ -1,0 +1,24 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+metadata:
+  name: grafana-local
+
+# PVC config for local k3d development
+resources:
+  - ../../base
+
+# Override PVC storage class for local-path
+patches:
+  - target:
+      kind: PersistentVolumeClaim
+      name: grafana-storage
+    patch: |-
+      - op: replace
+        path: /spec/storageClassName
+        value: local-path
+      - op: replace
+        path: /spec/resources/requests/storage
+        value: 1Gi
+
+commonLabels:
+  environment: local
