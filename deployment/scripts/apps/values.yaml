@@ -1,7 +1,3 @@
-# New values file using official argocd-apps chart format
-# Migration from custom chart to argo/argocd-apps
-
-# Global config for reusability
 config:
   spec:
     destination:
@@ -10,9 +6,7 @@ config:
       repoURL: https://github.com/ankurmathur01nagarro/nagp-ecommerce
       targetRevision: HEAD
 
-# Official argocd-apps chart values
 argocd-apps:
-  # AppProjects - moved from application.yaml
   projects:
     nagp-ecom:
       namespace: argocd
@@ -49,11 +43,7 @@ argocd-apps:
       sourceRepos:
         - '*'
 
-  # Applications - converted from list to map format
   applications:
-    # ========================================
-    # Microservice Applications (Git-based)
-    # ========================================
     nagp-ecom-ui:
       namespace: argocd
       additionalAnnotations:
@@ -96,9 +86,6 @@ argocd-apps:
           prune: true
           selfHeal: true
 
-    # ========================================
-    # Observability Stack (Helm-based)
-    # ========================================
     loki:
       namespace: argocd
       additionalAnnotations:
@@ -188,18 +175,15 @@ argocd-apps:
         - resources-finalizer.argocd.argoproj.io
       project: observability
       sources:
-        # Helm chart source
         - chart: alloy
           repoURL: https://grafana.github.io/helm-charts
           targetRevision: "1.6.0"
           helm:
             valueFiles:
               - $values/deployment/scripts/observability/alloy/helm-alloy-values.yaml
-        # Git repo for values file
         - repoURL: https://github.com/ankurmathur01nagarro/nagp-ecommerce
           targetRevision: HEAD
           ref: values
-        # Kustomize ConfigMap source
         - repoURL: https://github.com/ankurmathur01nagarro/nagp-ecommerce
           targetRevision: HEAD
           path: deployment/scripts/observability/alloy
@@ -221,18 +205,15 @@ argocd-apps:
         - resources-finalizer.argocd.argoproj.io
       project: observability
       sources:
-        # Kustomize source for PVC
         - repoURL: https://github.com/ankurmathur01nagarro/nagp-ecommerce
           targetRevision: HEAD
-          path: deployment/scripts/observability/grafana
-        # Helm chart source
+          path: deployment/scripts/observability/grafana/overlays/local
         - chart: grafana
           repoURL: https://grafana-community.github.io/helm-charts
           targetRevision: "10.5.15"
           helm:
             valueFiles:
-              - $values/deployment/scripts/observability/grafana/base/helm-grafana-values.yaml
-        # Git repo for values file reference
+              - $values/deployment/scripts/observability/grafana/helm-grafana-values.yaml
         - repoURL: https://github.com/ankurmathur01nagarro/nagp-ecommerce
           targetRevision: HEAD
           ref: values
