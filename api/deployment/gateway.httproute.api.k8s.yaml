@@ -12,7 +12,7 @@ spec:
     - name: nagp-ecom-gateway
       namespace: nagp-ecom
   hostnames:
-    - "ecom.docker.localhost"
+    - "ecom-api.docker.localhost"
     - "localhost"
   rules:
   - name: api-routes
