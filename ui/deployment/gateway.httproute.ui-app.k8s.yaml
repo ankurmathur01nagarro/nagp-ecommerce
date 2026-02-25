@@ -14,6 +14,7 @@ spec:
   hostnames:
     - "ecom.docker.localhost"
     - "localhost"
+    - "ecom.pve.lan"
   rules:
   - name: ui-routes
     matches:

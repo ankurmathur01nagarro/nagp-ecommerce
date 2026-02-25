@@ -14,6 +14,7 @@ spec:
   hostnames:
     - "ecom-api.docker.localhost"
     - "localhost"
+    - "ecom-api.pve.lan"
   rules:
   - name: api-routes
     matches:
