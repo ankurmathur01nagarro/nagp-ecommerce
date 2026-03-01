@@ -11,10 +11,6 @@ spec:
   parentRefs:
     - name: nagp-ecom-gateway
       namespace: nagp-ecom
-  hostnames:
-    - "ecom.docker.localhost"
-    - "localhost"
-    - "ecom.pve.lan"
   rules:
   - name: ui-routes
     matches:
