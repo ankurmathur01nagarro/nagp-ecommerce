@@ -68,24 +68,33 @@ ssh_priv_key = Prompt.ask("[green bold]Enter path to SSH private key file[/]", d
 # Get gateway fields from user input for cloud-init configuration
 gateway = Prompt.ask("[green bold]Enter network gateway (e.g. 192.168.1.1)[/]", default="192.168.1.1")
 
+# TrueNAS / democratic-csi configuration
+c.rule("[bold blue]TrueNAS Storage Configuration[/]")
+truenas_ip = Prompt.ask("[green bold]Enter TrueNAS IP address (or hostname)[/]", default="192.168.1.18")
+truenas_api_key = Prompt.ask("[green bold]Enter TrueNAS API key[/]", password=True)
+nfs_dataset_parent = Prompt.ask("[green bold]Enter ZFS parent dataset for NFS volumes[/]", default="pool1/k8s-nfs")
+iscsi_dataset_parent = Prompt.ask("[green bold]Enter ZFS parent dataset for iSCSI volumes[/]", default="pool1/pool1-iscsi")
+truenas_network_cidr = Prompt.ask("[green bold]Enter allowed network CIDR for NFS access[/]", default=f"{gateway.rsplit('.', 1)[0]}.0/24")
+
 # Get number of worker nodes to create
 agents = Prompt.ask("[green bold]Enter number of worker nodes to create[/]", default="2", show_default=True)
 
 # Create k3s VM
-def create_k3s_vm(name, ip_address, gateway, disk_size='10G'):
+# is_control: control plane nodes get more cores and ballooning disabled
+def create_k3s_vm(name, ip_address, gateway, disk_size='10G', is_control=False):
     nextid = int(str(prox.cluster.nextid.get()))
     c.log(f"[blue]Creating VM with ID {nextid} from template, this may take a few minutes...[/]")
     task = prox.nodes('pve').qemu.post(
         name=name,
         vmid=nextid,
         agent=1,
-        balloon=2048,
-        memory=4096,
+        balloon=0,
+        memory=4096 if is_control else 6144,
         boot='order=scsi0;net0',
         cipassword='Ankank29',
         ciuser='k3s',
         sockets=1,
-        cores=2,
+        cores=1 if is_control else 2,
         cpu='host',
         ide2=f'{vm_disk_storage}:cloudinit',
         ipconfig0=f'ip={ip_address}/24,gw={gateway}',
@@ -114,7 +123,7 @@ def create_k3s_vm(name, ip_address, gateway, disk_size='10G'):
 c.rule(f"[bold blue]Creating k3s cluster control node VM[/]")
 ip_address = Prompt.ask("[green bold]Enter static IP address for the control-plane VM (e.g. 192.168.1.210)[/]")
 vm_name = "k3s-control"
-vm_id = create_k3s_vm(vm_name, ip_address, gateway)
+vm_id = create_k3s_vm(vm_name, ip_address, gateway, is_control=True)
 c.log(f"[green]VM {vm_name} created with ID {vm_id} and IP address {ip_address}[/]")
 
 agents_vm_info = []
@@ -183,6 +192,9 @@ c.log(f"[yellow bold]⚠️Test your cluster with the generated kubeconfig file:
 
 kubeconfig_env = local.env(KUBECONFIG=f"{Path('./').absolute().joinpath('kubeconfig')}")
 with kubeconfig_env:
+    c.rule(f"[bold blue]Tainting control plane node to prevent scheduling regular workloads[/]")
+    _ = local["kubectl"]["taint", "nodes", "k3s-control", "node-role.kubernetes.io/control-plane=:NoSchedule"] & FG
+    
     c.rule("[bold blue]Setting up MetalLB[/]")
     metallb_cmd = local["pwsh"]["-Command", """&{
         helm repo add metallb https://metallb.github.io/metallb
@@ -203,5 +215,38 @@ with kubeconfig_env:
                 c.print(line, end="", style="grey50 dim")
     future.wait()
     c.rule(f"[bold green]✅ MetalLB Installed")
+    
+    c.rule(f"[bold blue]Setting up Democratic CSI[/]")
+
+    # Patch the committed template files with runtime values and write the gitignored output files.
+    # Templates (config-*.yaml.tpl) define the config structure — Python only fills in the placeholders.
+    # Kustomize secretGenerator reads the output files and wraps them into K8s Secrets.
+    overlay_path = Path("..") / "scripts" / "democratic-csi" / "overlays" / "local-truenas"
+
+    substitutions = {
+        "TRUENAS_IP":          truenas_ip,
+        "TRUENAS_API_KEY":     truenas_api_key,
+        "NFS_DATASET_PARENT":  nfs_dataset_parent,
+        "ISCSI_DATASET_PARENT": iscsi_dataset_parent,
+        "TRUENAS_NETWORK_CIDR": truenas_network_cidr,
+    }
+
+    for tpl_name, out_name in [("config-nfs.yaml.tpl", "config-nfs.yaml"),
+                                ("config-iscsi.yaml.tpl", "config-iscsi.yaml")]:
+        tpl_text = (overlay_path / tpl_name).read_text()
+        patched = tpl_text.format_map(substitutions)
+        (overlay_path / out_name).write_text(patched)
+        c.log(f"[green]Patched {tpl_name} → {out_name}[/]")
+
+    csi_cmd = local["pwsh"]["-Command", """&{
+        kubectl kustomize ..\\scripts\\democratic-csi\\overlays\\local-truenas --enable-helm | kubectl apply -f -
+    }"""]
+    future = csi_cmd & BG
+    while not future.poll():
+        if future.stdout is not None:
+            for line in future.stdout:
+                c.print(line, end="", style="grey50 dim")
+    future.wait()
+    c.rule(f"[bold green]✅ Democratic CSI Installed")
 
 c.log(f"[yellow bold]⚠️Your cluster is ready! Test it with: kubectl get nodes --kubeconfig {Path('./').absolute().joinpath('kubeconfig')}[/]")
