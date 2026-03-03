@@ -86,6 +86,31 @@ function Get-K3dClusterStatus {
 }
 
 # ============================================================================
+# Load Balancer Checks
+# ============================================================================
+
+# Test if MetalLB is installed
+function Test-MetalLBInstalled {
+    try {
+        $result = kubectl get namespace metallb-system -o json 2>$null
+        if ($null -eq $result) { return $false }
+
+        $pods = kubectl get pods -n metallb-system -o json 2>$null | ConvertFrom-Json
+        $running = $pods.items | Where-Object { $_.status.phase -eq 'Running' }
+        return $running.Count -gt 0
+    } catch {
+        return $false
+    }
+}
+
+# Wait for MetalLB pods to be ready
+function Wait-MetalLBPodsReady {
+    param([int]$TimeoutSeconds = 120)
+    Log-Info "Waiting for MetalLB pods to be ready (timeout: ${TimeoutSeconds}s)..."
+    kubectl wait --namespace metallb-system --for=condition=ready pod --selector=app=metallb --timeout="${TimeoutSeconds}s"
+}
+
+# ============================================================================
 # Service Mesh Checks
 # ============================================================================
 
@@ -251,6 +276,8 @@ Export-ModuleMember -Function @(
     'Test-HelmReleaseExists',
     'Test-K3dClusterExists',
     'Get-K3dClusterStatus',
+    'Test-MetalLBInstalled',
+    'Wait-MetalLBPodsReady',
     'Test-IstioInstalled',
     'Wait-IstioPodsReady',
     'Test-ArgoCDInstalled',

@@ -452,16 +452,19 @@ function Get-KubernetesPlatform {
     Write-SpectreHost "[yellow]Kubernetes Platform Selection[/]"
     
     $platforms = @(
+        "Generic Kubernetes",
+        "Talos OS",
+        "K3s",
+        "K3d",
+        "Minikube",
+        "kind",
+        "Docker Desktop",
         "AWS EKS",
         "Azure AKS",
         "Google GKE",
         "Oracle OCI",
-        "Docker Desktop",
-        "kind",
-        "Minikube",
         "MicroK8s",
-        "OpenShift",
-        "Generic Kubernetes"
+        "OpenShift"
     )
     
     $selectedPlatform = Read-SpectreSelection -Choices $platforms -Prompt "Select your Kubernetes platform"
@@ -475,16 +478,19 @@ function Get-IstioPlatformValue {
     )
     
     $platformMap = @{
-        "AWS EKS" = "aws"
-        "Azure AKS" = "azure"
-        "Google GKE" = "gke"
-        "Oracle OCI" = "oci"
-        "Docker Desktop" = "docker"
+        "Generic Kubernetes" = "generic"
+        "K3d" = "k3d"
+        "K3s" = "k3s"
         "kind" = "kind"
         "Minikube" = "minikube"
+        "Docker Desktop" = "docker"
+        "AWS EKS" = "aws"
+        "Azure AKS" = "azure"
+        "Talos OS" = "talos"
+        "Google GKE" = "gke"
+        "Oracle OCI" = "oci"
         "MicroK8s" = "microk8s"
         "OpenShift" = "openshift"
-        "Generic Kubernetes" = "generic"
     }
     
     return $platformMap[$Platform]

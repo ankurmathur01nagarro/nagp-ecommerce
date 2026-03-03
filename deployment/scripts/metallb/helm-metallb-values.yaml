@@ -1,0 +1,23 @@
+# MetalLB Helm Chart Values
+# Chart: metallb/metallb (v0.14.9)
+# Ref: https://github.com/metallb/metallb/tree/main/charts/metallb
+
+# Speaker - L2/BGP announcer (DaemonSet)
+speaker:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+# Controller - IP address allocation manager (Deployment)
+controller:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi

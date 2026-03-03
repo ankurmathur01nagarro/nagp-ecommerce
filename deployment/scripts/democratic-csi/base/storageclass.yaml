@@ -1,0 +1,28 @@
+# sc-block — for databases, stateful apps (RWO)
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: sc-block
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: org.democratic-csi.iscsi
+allowVolumeExpansion: true
+reclaimPolicy: Retain
+volumeBindingMode: WaitForFirstConsumer
+parameters:
+  fsType: ext4
+---
+# sc-shared — for uploads, media, shared config (RWX)
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: sc-shared
+provisioner: org.democratic-csi.nfs
+allowVolumeExpansion: true
+reclaimPolicy: Retain
+volumeBindingMode: WaitForFirstConsumer
+parameters:
+  fsType: nfs
+mountOptions:
+  - noatime
+  - nfsvers=3

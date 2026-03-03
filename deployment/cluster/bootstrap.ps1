@@ -31,6 +31,28 @@ try {
     exit 1
 }
 
+# Install required tools
+Show-SectionHeader "Installing Tools: kubectl, Istioctl, argocd CLI, helm"
+
+$ctx.ExecuteStep("Installing Required Tools", {
+    $installedTools = @()
+    @("kubectl", "istioctl", "argocd", "helm") | ForEach-Object {
+        if (Test-CommandExists -Command $_) {
+            Log-Info "$_ already installed"
+        } else {
+            scoop install $_
+        }
+        $installedTools += $_
+    }
+    Show-Success "Tools installed: $($installedTools -join ', ')"
+})
+
+# Add Helm repos
+$ctx.ExecuteStep("Adding Helm Repositories", {
+    helm repo add argo https://argoproj.github.io/argo-helm
+    helm repo update
+})
+
 # ============================================================================
 # Interactive Setup Wizard - Input Collection Phase
 # ============================================================================
@@ -40,51 +62,32 @@ try {
     Show-WizardHeader
 
     # Step 1: Cluster Selection
-    $clusterType = Get-KubernetesClusterType
-    Write-Host ""
-    Log-Info "User selected cluster type: $clusterType"
-
-    if ($clusterType -eq "remote") {
-        $kubeContext = Select-KubernetesContext
-        if ($null -eq $kubeContext) {
-            Log-Warning "User cancelled cluster context selection"
-            Show-CancelledMessage
-            exit 0
-        }
-        
-        Write-Host ""
-        $proceed = Confirm-ClusterSelection -ClusterType $clusterType -Context $kubeContext
-        if (-not $proceed) {
-            Log-Warning "User cancelled cluster confirmation"
-            Show-CancelledMessage
-            exit 0
-        }
-        
-        Log-Info "Switching to Kubernetes context: $kubeContext"
-        Invoke-CommandWithRetry -ScriptBlock {
-            kubectl config use-context $kubeContext
-        } -Description "Switch Kubernetes context"
-        
-        Write-Host ""
-        $kubernetesPlatform = Get-KubernetesPlatform
-        $istioPlatform = Get-IstioPlatformValue -Platform $kubernetesPlatform
-        Write-Host ""
-        Log-Info "Selected platform: $kubernetesPlatform (Istio platform: $istioPlatform)"
-        $useK3d = $false
-    } else {
-        $proceed = Confirm-ClusterSelection -ClusterType $clusterType
-        if (-not $proceed) {
-            Log-Warning "User cancelled cluster confirmation"
-            Show-CancelledMessage
-            exit 0
-        }
-        
-        $useK3d = $true
-        $kubernetesPlatform = "k3d"
-        $istioPlatform = "k3d"
-        Log-Info "Local k3d cluster selected"
+    $kubeContext = Select-KubernetesContext
+    if ($null -eq $kubeContext) {
+        Log-Warning "User cancelled cluster context selection"
+        Show-CancelledMessage
+        exit 0
     }
-
+    
+    Write-Host ""
+    $proceed = Confirm-ClusterSelection -ClusterType $clusterType -Context $kubeContext
+    if (-not $proceed) {
+        Log-Warning "User cancelled cluster confirmation"
+        Show-CancelledMessage
+        exit 0
+    }
+    
+    Log-Info "Switching to Kubernetes context: $kubeContext"
+    Invoke-CommandWithRetry -ScriptBlock {
+        kubectl config use-context $kubeContext
+    } -Description "Switch Kubernetes context"
+    
+    Write-Host ""
+    $kubernetesPlatform = Get-KubernetesPlatform
+    $istioPlatform = Get-IstioPlatformValue -Platform $kubernetesPlatform
+    Write-Host ""
+    Log-Info "Selected platform: $kubernetesPlatform (Istio platform: $istioPlatform)"
+    
     Write-Host ""
 
     # Step 2: Security Configuration
@@ -108,54 +111,10 @@ try {
     exit 1
 }
 
-# ============================================================================
-# Cluster Creation Phase
-# ============================================================================
-
-try {
-if ($useK3d) {
-    Show-SectionHeader "Creating Local Kubernetes Cluster (k3d)"
-    
-    $ctx.ExecuteStep("Creating Local Kubernetes Cluster (k3d)", {
-        if (-not (Test-K3dClusterExists -ClusterName "local")) {
-            k3d cluster create local `
-                --agents 2 `
-                --port "80:80@server:0" `
-                --port "443:443@server:0" `
-                --port "8000:8000@server:0" `
-                --k3s-arg "--disable=traefik@server:0" `
-                --api-port 6555
-            
-            kubectl config use-context k3d-local
-            $ctx.AutoTrack("K3dCluster", "local")
-            Show-Success "Local k3d cluster created and configured"
-        } else {
-            Log-Info "k3d cluster 'local' already exists"
-        }
-    })
-} else {
-    Show-SectionHeader "Using Remote Kubernetes Cluster"
-    
-    $ctx.ExecuteStep("Verifying Remote Cluster Access", {
-        kubectl cluster-info
-        Show-Success "Connected to remote cluster"
-    })
-}
-
-# Install required tools
-Show-SectionHeader "Installing Tools: Istioctl, argocd CLI, helm"
-
-$ctx.ExecuteStep("Installing Required Tools", {
-    $installedTools = @()
-    @("istioctl", "argocd", "helm") | ForEach-Object {
-        if (Test-CommandExists -Command $_) {
-            Log-Info "$_ already installed"
-        } else {
-            scoop install $_
-        }
-        $installedTools += $_
-    }
-    Show-Success "Tools installed: $($installedTools -join ', ')"
+Show-SectionHeader "Using Remote Kubernetes Cluster"  
+$ctx.ExecuteStep("Verifying Remote Cluster Access", {
+    kubectl cluster-info
+    Show-Success "Connected to remote cluster"
 })
 
 # Install Gateway API CRDs
@@ -170,20 +129,24 @@ $ctx.ExecuteStep("Installing Gateway API CRDs", {
     }
 })
 
-# Add Helm repo
-$ctx.ExecuteStep("Adding Helm Repositories", {
-    helm repo add argo https://argoproj.github.io/argo-helm
-    helm repo update
-})
-
 # Install Istio
 Show-SectionHeader "Install Istio"
 
 $ctx.ExecuteStep("Installing Istio", {
     if (-not (Test-IstioInstalled)) {
-        istioctl install -f ..\deployment\scripts\istio-config.yaml --set "values.global.platform=$istioPlatform" -y
-        kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-1.28/samples/addons/kiali.yaml
+        if ($istioPlatform -notin @("generic", "talos")) {
+            istioctl install -f ..\scripts\istio-config.yaml --set "values.global.platform=$istioPlatform" -y
+        } else {
+            kubectl create namespace istio-system
+            kubectl label namespace istio-system `
+                pod-security.kubernetes.io/enforce=privileged `
+                pod-security.kubernetes.io/audit=privileged `
+                pod-security.kubernetes.io/warn=privileged `
+                --overwrite
+            istioctl install -f ..\scripts\istio-config.yaml -y
+        }
         Wait-IstioPodsReady
+        kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-1.28/samples/addons/kiali.yaml
         $ctx.AutoTrack("ServiceMesh", "istio")
         Show-Success "Istio installed with platform: $kubernetesPlatform"
     } else {
@@ -249,7 +212,7 @@ $ctx.ExecuteStep("Installing ArgoCD", {
         } else {
             helm install argocd argo/argo-cd `
                 -n argocd `
-                -f ..\deployment\scripts\helm-argocd-values.yaml `
+                -f ..\scripts\helm-argocd-values.yaml `
                 --set "configs.secret.argocdServerAdminPassword=$bcryptPassword"
             
             $ctx.AutoTrack("HelmRelease", "argocd", "argocd")
@@ -271,15 +234,15 @@ Show-SectionHeader "Install ArgoCD Application that contains all (Apps of App Pa
 $ctx.ExecuteStep("Deploying Applications via ArgoCD", {
     # Create namespace for application with istio ambient mode labels
     if (-not (Test-NamespaceExists -Namespace "nagp-ecom")) {
-        kubectl create namespace nagp-ecom `
-            --labels "istio.io/dataplane-mode=ambient"
+        kubectl create namespace nagp-ecom
         $ctx.AutoTrack("Namespace", "nagp-ecom")
+        kubectl label ns nagp-ecom "istio.io/dataplane-mode=ambient"
     } else {
         Log-Info "Namespace 'nagp-ecom' already exists"
     }
     
     if (-not (Test-ArgoCDApplicationsExist)) {
-        kubectl apply -f ..\deployment\scripts\application.yaml
+        kubectl apply -f ..\scripts\application.yaml
         $ctx.AutoTrack("ArgoCDApplication", "nagp-applications")
     } else {
         Log-Info "ArgoCD applications already deployed"
@@ -288,41 +251,6 @@ $ctx.ExecuteStep("Deploying Applications via ArgoCD", {
 
 Log-Success "Cluster deployment completed successfully"
 Show-CompletionSummary
-
-} catch {
-    Log-Error "Deployment failed: $_"
-    
-    Write-Host ""
-    Write-Host "═════════════════════════════════════════════════════════════" -ForegroundColor Red
-    Write-Host "  DEPLOYMENT ERROR" -ForegroundColor Red
-    Write-Host "═════════════════════════════════════════════════════════════" -ForegroundColor Red
-    Write-Host ""
-    Write-Host "Error Details:" -ForegroundColor Red
-    Write-Host $_ -ForegroundColor Yellow
-    Write-Host ""
-    
-    # Show tracked resources for cleanup
-    $trackedResources = $ctx.GetTrackedForCleanup()
-    if ($trackedResources.Count -gt 0) {
-        Write-Host "Resources created before failure (for potential cleanup):" -ForegroundColor Yellow
-        $trackedResources.GetEnumerator() | ForEach-Object {
-            Write-Host "  - [$($_.Value.Type)] $($_.Value.Name)" -ForegroundColor Gray
-        }
-        Write-Host ""
-        
-        $cleanupChoice = Read-Host "Would you like to clean up the created resources? (yes/no)"
-        if ($cleanupChoice -eq "yes") {
-            Log-Warning "Starting cleanup of tracked resources"
-            Invoke-ResourceCleanup
-            Log-Warning "Cleanup completed"
-        }
-    }
-    
-    Write-Host "Log file: $(Get-LogPath)" -ForegroundColor Cyan
-    Write-Host ""
-    
-    exit 1
-}
 
 # ============================================================================
 # Completion

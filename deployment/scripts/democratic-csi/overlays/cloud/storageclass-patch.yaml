@@ -1,0 +1,26 @@
+# TODO: fill when cloud provider is decided
+# AWS example ready to uncomment:
+#- target:
+#    kind: StorageClass
+#    name: sc-block
+#  patch: |
+#    - op: replace
+#      path: /provisioner
+#      value: ebs.csi.aws.com
+#    - op: replace
+#      path: /parameters
+#      value:
+#        type: gp3
+#        encrypted: "true"
+#- target:
+#    kind: StorageClass
+#    name: sc-shared
+#  patch: |
+#    - op: replace
+#      path: /provisioner
+#      value: efs.csi.aws.com
+#    - op: replace
+#      path: /parameters
+#      value:
+#        provisioningMode: efs-ap
+#        fileSystemId: fs-XXXXXXXX

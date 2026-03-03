@@ -1,0 +1,7 @@
+# TODO: fill when plain NFS server is ready
+# Will patch sc-block and sc-shared provisioners
+# to point to plain NFS instead of TrueNAS
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base

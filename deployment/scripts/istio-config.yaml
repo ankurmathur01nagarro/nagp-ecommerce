@@ -5,10 +5,27 @@ metadata:
   namespace: istio-system
 spec:
   profile: ambient
+  components:
+    pilot:
+      k8s:
+        resources:
+          requests:
+            cpu: 200m
+            memory: 512Mi
+          limits:
+            cpu: 500m
+            memory: 1Gi
+  values:
+    cni:
+      excludeNamespaces:
+        - kube-system
+        - istio-system     # ← prevents ambient capturing system pods
   meshConfig:
     enableTracing: true
     defaultConfig:
       tracing: {} # disable legacy MeshConfig tracing options
+      proxyMetadata:
+        ISTIO_META_ENABLE_HBONE: "true"   # ← required for ztunnel HBONE tunneling
     extensionProviders:
     - name: otel
       opentelemetry:

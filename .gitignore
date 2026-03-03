@@ -4,3 +4,8 @@
 # Logs
 *.log
 logs/
+# Or specifically if your kustomization.yaml is inside a base folder
+deployment/scripts/**/base/**/charts
+deployment/scripts/**/overlays/**/charts
+**/__pycache__
+**/.DS_Store

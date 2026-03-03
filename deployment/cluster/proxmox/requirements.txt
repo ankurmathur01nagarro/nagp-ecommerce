@@ -1,0 +1,9 @@
+proxmoxer
+requests
+requests_toolbelt
+openssh_wrapper
+paramiko
+rich
+readchar
+fabric
+plumbum

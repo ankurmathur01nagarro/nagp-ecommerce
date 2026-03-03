@@ -1,0 +1,24 @@
+# MetalLB IP Address Pool
+# Defines the range of IP addresses MetalLB can assign to LoadBalancer services.
+# IMPORTANT: Ensure these IPs are unused on your LAN and excluded from your
+# router's DHCP pool to avoid conflicts.
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: lan-pool
+  namespace: metallb-system
+spec:
+  addresses:
+    - 192.168.1.240-192.168.1.250
+---
+# MetalLB L2 Advertisement
+# Enables Layer 2 mode where MetalLB responds to ARP requests for allocated IPs.
+# This is the simplest mode and works on any network without special router config.
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: l2-advert
+  namespace: metallb-system
+spec:
+  ipAddressPools:
+    - lan-pool    # Reference to the IPAddressPool that this advertisement applies to.
