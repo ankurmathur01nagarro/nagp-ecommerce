@@ -3,6 +3,8 @@ csiDriver:
 
 driver:
   existingConfigSecret: democratic-csi-nfs-config
+  config:
+    driver: freenas-api-nfs
 
 node:
   hostPID: true

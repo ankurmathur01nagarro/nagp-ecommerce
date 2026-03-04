@@ -9,3 +9,6 @@ deployment/scripts/**/base/**/charts
 deployment/scripts/**/overlays/**/charts
 **/__pycache__
 **/.DS_Store
+
+**/local-truenas/config-iscsi.yaml
+**/local-truenas/config-nfs.yaml

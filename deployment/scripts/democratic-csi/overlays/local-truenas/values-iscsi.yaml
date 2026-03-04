@@ -3,6 +3,8 @@ csiDriver:
 
 driver:
   existingConfigSecret: democratic-csi-iscsi-config
+  config:
+    driver: freenas-api-iscsi
 
 node:
   hostPID: true

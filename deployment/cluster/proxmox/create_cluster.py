@@ -68,14 +68,6 @@ ssh_priv_key = Prompt.ask("[green bold]Enter path to SSH private key file[/]", d
 # Get gateway fields from user input for cloud-init configuration
 gateway = Prompt.ask("[green bold]Enter network gateway (e.g. 192.168.1.1)[/]", default="192.168.1.1")
 
-# TrueNAS / democratic-csi configuration
-c.rule("[bold blue]TrueNAS Storage Configuration[/]")
-truenas_ip = Prompt.ask("[green bold]Enter TrueNAS IP address (or hostname)[/]", default="192.168.1.18")
-truenas_api_key = Prompt.ask("[green bold]Enter TrueNAS API key[/]", password=True)
-nfs_dataset_parent = Prompt.ask("[green bold]Enter ZFS parent dataset for NFS volumes[/]", default="pool1/k8s-nfs")
-iscsi_dataset_parent = Prompt.ask("[green bold]Enter ZFS parent dataset for iSCSI volumes[/]", default="pool1/pool1-iscsi")
-truenas_network_cidr = Prompt.ask("[green bold]Enter allowed network CIDR for NFS access[/]", default=f"{gateway.rsplit('.', 1)[0]}.0/24")
-
 # Get number of worker nodes to create
 agents = Prompt.ask("[green bold]Enter number of worker nodes to create[/]", default="2", show_default=True)
 
@@ -193,7 +185,7 @@ c.log(f"[yellow bold]⚠️Test your cluster with the generated kubeconfig file:
 kubeconfig_env = local.env(KUBECONFIG=f"{Path('./').absolute().joinpath('kubeconfig')}")
 with kubeconfig_env:
     c.rule(f"[bold blue]Tainting control plane node to prevent scheduling regular workloads[/]")
-    _ = local["kubectl"]["taint", "nodes", "k3s-control", "node-role.kubernetes.io/control-plane=:NoSchedule"] & FG
+    _ = local["kubectl"]["taint", "nodes", "k3s-control", "node-role.kubernetes.io/control-plane=:NoSchedule", "--overwrite"] & FG
     
     c.rule("[bold blue]Setting up MetalLB[/]")
     metallb_cmd = local["pwsh"]["-Command", """&{
@@ -215,38 +207,57 @@ with kubeconfig_env:
                 c.print(line, end="", style="grey50 dim")
     future.wait()
     c.rule(f"[bold green]✅ MetalLB Installed")
-    
-    c.rule(f"[bold blue]Setting up Democratic CSI[/]")
 
-    # Patch the committed template files with runtime values and write the gitignored output files.
-    # Templates (config-*.yaml.tpl) define the config structure — Python only fills in the placeholders.
-    # Kustomize secretGenerator reads the output files and wraps them into K8s Secrets.
-    overlay_path = Path("..") / "scripts" / "democratic-csi" / "overlays" / "local-truenas"
+    # Ask the user whether they want to install Democratic CSI for TrueNAS integration, and if yes, ask for the required configuration values and install it with kustomize and helm
+    install_csi = Prompt.ask("[green bold]Do you want to install Democratic CSI for TrueNAS integration? (y/n)[/]", choices=["y", "n"], default="y")
+    if install_csi == "y":
+        c.rule(f"[bold blue]Setting up Democratic CSI[/]")
+        # Before installing Democratic CSI, we need to setup 
+        # TrueNAS by creating the necessary datasets for NFS and iSCSI, and generating an API key for the CSI driver to authenticate with TrueNAS API.
+        # This can be automated with a script that uses the TrueNAS API, but for simplicity we will ask the user to do it manually and provide the required values.
+        c.log("[yellow bold]⚠️Please set up your TrueNAS with the following configuration before proceeding:[/]")
+        c.print(Text("- Create a ZFS dataset for NFS volumes (e.g. pool1/k8s-nfs)", style="green"))
+        c.print(Text("- Create a ZFS dataset for iSCSI volumes (e.g. pool1/pool1-iscsi)", style="green"))
+        c.print(Text("- Generate an API key for the CSI driver with permissions to manage storage and access (you can create a new user for this and assign the appropriate permissions, then generate an API key for that user)", style="green"))
+        c.print(Text("- Note down the IP address (or hostname) of your TrueNAS and the allowed network CIDR for NFS access (e.g. 192.168.1.0/24)", style="green"))
+        
+        # TrueNAS / democratic-csi configuration
+        c.rule("[bold blue]TrueNAS Storage Configuration[/]")
+        truenas_ip = Prompt.ask("[green bold]Enter TrueNAS IP address (or hostname)[/]", default="192.168.1.18")
+        truenas_api_key = Prompt.ask("[green bold]Enter TrueNAS API key[/]", password=True)
+        nfs_dataset_parent = Prompt.ask("[green bold]Enter ZFS parent dataset for NFS volumes[/]", default="pool1/k8s-nfs")
+        iscsi_dataset_parent = Prompt.ask("[green bold]Enter ZFS parent dataset for iSCSI volumes[/]", default="pool1/pool1-iscsi")
+        truenas_network_cidr = Prompt.ask("[green bold]Enter allowed network CIDR for NFS access[/]", default=f"{gateway.rsplit('.', 1)[0]}.0/24")
 
-    substitutions = {
-        "TRUENAS_IP":          truenas_ip,
-        "TRUENAS_API_KEY":     truenas_api_key,
-        "NFS_DATASET_PARENT":  nfs_dataset_parent,
-        "ISCSI_DATASET_PARENT": iscsi_dataset_parent,
-        "TRUENAS_NETWORK_CIDR": truenas_network_cidr,
-    }
+        # Patch the committed template files with runtime values and write the gitignored output files.
+        # Templates (config-*.yaml.tpl) define the config structure — Python only fills in the placeholders.
+        # Kustomize secretGenerator reads the output files and wraps them into K8s Secrets.
+        overlay_path = Path("..") / "scripts" / "democratic-csi" / "overlays" / "local-truenas"
 
-    for tpl_name, out_name in [("config-nfs.yaml.tpl", "config-nfs.yaml"),
-                                ("config-iscsi.yaml.tpl", "config-iscsi.yaml")]:
-        tpl_text = (overlay_path / tpl_name).read_text()
-        patched = tpl_text.format_map(substitutions)
-        (overlay_path / out_name).write_text(patched)
-        c.log(f"[green]Patched {tpl_name} → {out_name}[/]")
+        substitutions = {
+            "TRUENAS_IP":          truenas_ip,
+            "TRUENAS_API_KEY":     truenas_api_key,
+            "NFS_DATASET_PARENT":  nfs_dataset_parent,
+            "ISCSI_DATASET_PARENT": iscsi_dataset_parent,
+            "TRUENAS_NETWORK_CIDR": truenas_network_cidr,
+        }
 
-    csi_cmd = local["pwsh"]["-Command", """&{
-        kubectl kustomize ..\\scripts\\democratic-csi\\overlays\\local-truenas --enable-helm | kubectl apply -f -
-    }"""]
-    future = csi_cmd & BG
-    while not future.poll():
-        if future.stdout is not None:
-            for line in future.stdout:
-                c.print(line, end="", style="grey50 dim")
-    future.wait()
-    c.rule(f"[bold green]✅ Democratic CSI Installed")
+        for tpl_name, out_name in [("config-nfs.yaml.tpl", "config-nfs.yaml"),
+                                    ("config-iscsi.yaml.tpl", "config-iscsi.yaml")]:
+            tpl_text = (overlay_path / tpl_name).read_text()
+            patched = tpl_text.format_map(substitutions)
+            (overlay_path / out_name).write_text(patched)
+            c.log(f"[green]Patched {tpl_name} → {out_name}[/]")
+
+        csi_cmd = local["pwsh"]["-Command", """&{
+            kubectl kustomize ..\\scripts\\democratic-csi\\overlays\\local-truenas --enable-helm | kubectl apply -f -
+        }"""]
+        future = csi_cmd & BG
+        while not future.poll():
+            if future.stdout is not None:
+                for line in future.stdout:
+                    c.print(line, end="", style="grey50 dim")
+        future.wait()
+        c.rule(f"[bold green]✅ Democratic CSI Installed")
 
 c.log(f"[yellow bold]⚠️Your cluster is ready! Test it with: kubectl get nodes --kubeconfig {Path('./').absolute().joinpath('kubeconfig')}[/]")
