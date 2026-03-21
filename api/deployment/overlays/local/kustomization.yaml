@@ -13,12 +13,14 @@ patches:
 
 configMapGenerator:
   - name: secrets-nagp
+    namespace: nagp-ecom
     options:
       disableNameSuffixHash: true
     behavior: replace
     files:
       - .secrets-nagp.env
   - name: identity-api-secrets
+    namespace: nagp-ecom
     options:
       disableNameSuffixHash: true
     behavior: replace
