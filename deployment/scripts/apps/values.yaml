@@ -75,7 +75,7 @@ argocd-apps:
       source:
         repoURL: https://github.com/ankurmathur01nagarro/nagp-ecommerce
         targetRevision: HEAD
-        path: api/deployment
+        path: api/deployment/overlays/local
       destination:
         server: https://kubernetes.default.svc
         namespace: nagp-ecom
