@@ -24,5 +24,5 @@ configMapGenerator:
     options:
       disableNameSuffixHash: true
     behavior: replace
-    files:
+    literals:
       - ECOMAPI_CLIENT_SECRET=9f8a7b6c-5d4e-3f2a-1b0c-9d8e7f6a5b4c

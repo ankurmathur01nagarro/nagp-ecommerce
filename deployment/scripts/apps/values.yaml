@@ -64,7 +64,6 @@ argocd-apps:
         automated:
           prune: true
           selfHeal: true
-
     nagp-ecom-api:
       namespace: argocd
       additionalAnnotations:
@@ -85,7 +84,6 @@ argocd-apps:
         automated:
           prune: true
           selfHeal: true
-
     loki:
       namespace: argocd
       additionalAnnotations:
