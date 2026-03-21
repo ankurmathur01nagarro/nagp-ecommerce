@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /c/nagp-casestudy/src/api/ECOM.WebApi.Data/Migrations -name *.cs)",
+      "Bash(find /c/nagp-casestudy/src/api -name .github -o -name .gitlab-ci.yml -o -name *.yml -o -name *.yaml)",
+      "Bash(find /c/nagp-casestudy/src/api -not -path */bin/* -not -path */obj/* -type f)"
+    ]
+  }
+}

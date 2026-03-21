@@ -1,0 +1,64 @@
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: ecomdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ecomdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migration:
+    build:
+      context: .
+      dockerfile: Dockerfile.migration
+    environment:
+      ConnectionStrings__PostgresConnString: "Host=postgres;Port=5432;Database=ecomdb;Username=postgres;Password=password"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: on-failure
+
+  identity-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.identity
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTP_PORTS: "8080"
+      ConnectionStrings__Default: "Host=postgres;Port=5432;Database=ecomdb;Username=postgres;Password=password"
+    ports:
+      - "5224:8080"
+    depends_on:
+      migration:
+        condition: service_completed_successfully
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTP_PORTS: "8080"
+      ConnectionStrings__PostgresConnString: "Host=postgres;Port=5432;Database=ecomdb;Username=postgres;Password=password"
+      OpenIddict__Issuer: "http://identity-api:8080/"
+      IdentityApi__BaseUrl: "http://identity-api:8080"
+      IdentityApi__ClientId: "ecom-api"
+      IdentityApi__ClientSecret: "your-secret-here"
+    ports:
+      - "5170:8080"
+    depends_on:
+      migration:
+        condition: service_completed_successfully
+      identity-api:
+        condition: service_started
+
+volumes:
+  postgres-data:

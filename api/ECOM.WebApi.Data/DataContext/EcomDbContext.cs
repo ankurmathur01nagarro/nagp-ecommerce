@@ -9,7 +9,6 @@ namespace ECOM.WebApi.Data;
 public class EcomDbContext(DbContextOptions<EcomDbContext> options)
     : DbContext(options)
 {
-    public DbSet<Users> Users { get; set; }
     public DbSet<ProductCategory> ProductCategories { get; set; }
     public DbSet<Products> Products { get; set; }
     public DbSet<ProductImages> ProductImages { get; set; }

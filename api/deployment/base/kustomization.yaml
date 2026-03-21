@@ -1,0 +1,28 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: nagp-ecom
+
+resources:
+  - httproute.api.k8s.yaml
+  - httproute.identity-api.k8s.yaml
+  - statefulSet.database.k8s.yaml
+  - pvc.postgres.k8s.yaml
+  - service.database.k8s.yaml
+  - deploy.webapi.k8s.yaml
+  - service.webapi.k8s.yaml
+  - deploy.identity-api.k8s.yaml
+  - service.identity-api.k8s.yaml
+
+configMapGenerator:
+  - name: secrets-nagp
+    options:
+      disableNameSuffixHash: true
+    literals:
+      - POSTGRES_PASSWORD=password
+  - name: identity-api-secrets
+    options:
+      disableNameSuffixHash: true
+    behavior: replace
+    files:
+      - ECOMAPI_CLIENT_SECRET=9f8a7b6c-5d4e-3f2a-1b0c-9d8e7f6a5b4c

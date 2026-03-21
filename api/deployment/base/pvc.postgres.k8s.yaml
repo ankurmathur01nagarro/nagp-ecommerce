@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-postgres-data-volume
+  labels:
+    app: postgres
+    type: pvc
+    stack: nagp-ecom-api
+spec:
+  accessModes:
+    - ReadWriteOnce
+  volumeMode: Filesystem
+  resources:
+    requests:
+      storage: 1Gi
+
+    

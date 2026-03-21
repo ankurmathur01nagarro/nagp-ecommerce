@@ -1,0 +1,21 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+namespace: nagp-ecom
+commonAnnotations:
+  deployment.environment: cloud
+
+patches:
+  - path: patch.pvc.postgres.cloud.yaml
+  - path: patch.statefulset.postgres.cloud.yaml
+
+configMapGenerator:
+  - name: secrets-nagp
+    options:
+      disableNameSuffixHash: true
+    behavior: replace
+    files:
+      - .secrets-nagp.env

@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  labels:
+    app: postgres
+    type: database
+    stack: nagp-ecom-api
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+      stack: nagp-ecom-api
+  template:
+    metadata:
+      name: postgres
+      labels:
+        app: postgres
+        type: database
+        stack: nagp-ecom-api
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:18.3-alpine
+          ports:
+            - name: pg-port
+              containerPort: 5432
+          env:
+            - name: PGDATA
+              value: /var/lib/postgresql/18/docker
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: secrets-nagp
+                  key: POSTGRES_PASSWORD
+          resources:
+            requests:
+              cpu: 250m
+              memory: 500Mi
+            limits:
+              cpu: 500m
+              memory: 1Gi
+          volumeMounts:
+            - name: pgdata
+              mountPath: /var/lib/postgresql
+      volumes:
+        - name: pgdata
+          persistentVolumeClaim:
+            claimName: pvc-postgres-data-volume

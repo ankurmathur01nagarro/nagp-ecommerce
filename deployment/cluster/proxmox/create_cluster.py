@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from time import sleep
 from plumbum import local, SshMachine, BG, FG, TEE
@@ -13,6 +14,10 @@ import proxmox_helper as ph
 import urllib.parse
 
 c = Console()
+py_script_dir = Path(__file__).parent.absolute()
+deployment_dir = (py_script_dir / ".." / "..").resolve()
+deployment_cluster_dir = (deployment_dir / "cluster").resolve()
+deployment_scripts_dir = (deployment_dir / "scripts").resolve()
 
 # Ask for proxmox host ip and credentials to connect with proxmoxer API, or use environment variables for authentication
 proxmox_host = Prompt.ask("[green bold]Enter Proxmox host IP address[/]", default="192.168.1.22")
@@ -158,31 +163,33 @@ for agent in agents_vm_info:
 c.rule("[bold blue]Installing k3s with k3sup on control plane[/]")
 args = ["--ip", ip_address, "--user", "k3s"]
 args.extend(["--ssh-key", ssh_priv_key])
-
-k3sup_cmd = local["k3sup"]["install"][args + ["--k3s-extra-args", "--disable traefik --disable servicelb"]]
-future = k3sup_cmd & BG
-if future.stdout is not None:
-    for line in future.stdout:
-        c.print(line, end="", style="dim")
-future.wait()
-c.rule(f"[bold green]✅ Done")
-
-for agent in agents_vm_info:
-    c.rule(f"[bold blue]Joining {agent['name']} to the cluster with k3sup[/]")
-    join_args = ["--ip", agent['ip']]
-    join_args.extend(["--server-ip", ip_address])
-    join_args.extend(["--user", "k3s", "--server-user", "k3s"])
-    join_args.extend(["--ssh-key", ssh_priv_key])
-    k3sup_join_cmd = local["k3sup"]["join"][join_args]
-    future = k3sup_join_cmd & BG
+with local.cwd(deployment_cluster_dir):
+    k3sup_cmd = local["k3sup"]["install"][args + ["--k3s-extra-args", "--disable traefik --disable servicelb"]]
+    future = k3sup_cmd & BG
     if future.stdout is not None:
         for line in future.stdout:
             c.print(line, end="", style="dim")
     future.wait()
+    c.rule(f"[bold green]✅ Done")
+
+    for agent in agents_vm_info:
+        c.rule(f"[bold blue]Joining {agent['name']} to the cluster with k3sup[/]")
+        join_args = ["--ip", agent['ip']]
+        join_args.extend(["--server-ip", ip_address])
+        join_args.extend(["--user", "k3s", "--server-user", "k3s"])
+        join_args.extend(["--ssh-key", ssh_priv_key])
+        k3sup_join_cmd = local["k3sup"]["join"][join_args]
+        future = k3sup_join_cmd & BG
+        if future.stdout is not None:
+            for line in future.stdout:
+                c.print(line, end="", style="dim")
+        future.wait()
 
 c.log(f"[yellow bold]⚠️Test your cluster with the generated kubeconfig file:\nSaving file to: {Path('./').absolute().joinpath('kubeconfig')}\n[/]")
 
-kubeconfig_env = local.env(KUBECONFIG=f"{Path('./').absolute().joinpath('kubeconfig')}")
+kubeconfig_env = local \
+    .cwd(deployment_scripts_dir) \
+    .env(KUBECONFIG=f"{deployment_cluster_dir.absolute().joinpath('kubeconfig')}")
 with kubeconfig_env:
     c.rule(f"[bold blue]Tainting control plane node to prevent scheduling regular workloads[/]")
     _ = local["kubectl"]["taint", "nodes", "k3s-control", "node-role.kubernetes.io/control-plane=:NoSchedule", "--overwrite"] & FG
@@ -197,8 +204,8 @@ with kubeconfig_env:
             pod-security.kubernetes.io/audit=privileged `
             pod-security.kubernetes.io/warn=privileged `
             --overwrite
-        helm install metallb metallb/metallb --namespace metallb-system -f ..\\scripts\\metallb\\helm-metallb-values.yaml --wait
-        kubectl apply -f ..\\scripts\\metallb\\metallb-config.yaml
+        helm install metallb metallb/metallb --namespace metallb-system -f .\\metallb\\helm-metallb-values.yaml --wait
+        kubectl apply -f .\\metallb\\metallb-config.yaml
     }"""]
     future = metallb_cmd & BG
     while not future.poll():
@@ -232,7 +239,7 @@ with kubeconfig_env:
         # Patch the committed template files with runtime values and write the gitignored output files.
         # Templates (config-*.yaml.tpl) define the config structure — Python only fills in the placeholders.
         # Kustomize secretGenerator reads the output files and wraps them into K8s Secrets.
-        overlay_path = Path("..") / "scripts" / "democratic-csi" / "overlays" / "local-truenas"
+        overlay_path = Path(".") / "democratic-csi" / "overlays" / "local-truenas"
 
         substitutions = {
             "TRUENAS_IP":          truenas_ip,
@@ -250,7 +257,7 @@ with kubeconfig_env:
             c.log(f"[green]Patched {tpl_name} → {out_name}[/]")
 
         csi_cmd = local["pwsh"]["-Command", """&{
-            kubectl kustomize ..\\scripts\\democratic-csi\\overlays\\local-truenas --enable-helm | kubectl apply -f -
+            kubectl kustomize .\\democratic-csi\\overlays\\local-truenas --enable-helm | kubectl apply -f -
         }"""]
         future = csi_cmd & BG
         while not future.poll():
@@ -259,5 +266,12 @@ with kubeconfig_env:
                     c.print(line, end="", style="grey50 dim")
         future.wait()
         c.rule(f"[bold green]✅ Democratic CSI Installed")
-
-c.log(f"[yellow bold]⚠️Your cluster is ready! Test it with: kubectl get nodes --kubeconfig {Path('./').absolute().joinpath('kubeconfig')}[/]")
+    
+    c.log(f"[yellow bold]⚠️Your cluster is ready! Test it with: kubectl get nodes --kubeconfig {os.environ.get('KUBECONFIG')}[/]")
+    
+    # Bootstrap and start deployment with ArgoCD. 
+    # You can also use kubectl directly to deploy applications or manage the cluster.
+    with local.cwd(deployment_cluster_dir):
+        c.rule(f"[bold blue]Bootstrapping ArgoCD and starting application deployment[/]")
+        local['py'][".\\bootstrap.py"].run()
+        c.rule(f"[bold green]✅ ArgoCD Bootstrapped and Application Deployment Started")

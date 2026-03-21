@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ecom-identity-api
+  labels:
+    app: ecom-identity-api
+    type: api
+    stack: nagp-ecom-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ecom-identity-api
+      stack: nagp-ecom-api
+  template:
+    metadata:
+      labels:
+        app: ecom-identity-api
+        type: api
+        stack: nagp-ecom-api
+    spec:
+      containers:
+        - name: ecom-identity-api
+          image: nagp-ecom-identity-api
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                configMapKeyRef:
+                  name: secrets-nagp
+                  key: POSTGRES_PASSWORD
+            - name: ConnectionStrings__Default
+              value: "Host=postgres;Port=5432;Database=ecomdb;Username=postgres;Password=$(POSTGRES_PASSWORD)"
+            - name: OpenIddict__Clients__EcomApi__ClientSecret
+              valueFrom:
+                secretKeyRef:
+                  name: identity-api-secrets
+                  key: ECOMAPI_CLIENT_SECRET
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi

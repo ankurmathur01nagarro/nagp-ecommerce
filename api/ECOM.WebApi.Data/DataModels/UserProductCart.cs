@@ -13,7 +13,5 @@ namespace ECOM.WebApi.Data.DataModels
 
         [ForeignKey("ProductId")]
         public Products Product { get; set; } = default!;
-        [ForeignKey("UserId")]
-        public Users User { get; set; } = default!;
     }
 }

@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  labels:
+    app: postgres
+    type: database
+    stack: nagp-ecom-api
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - port: 5432
+      name: svc-port-postgres
+  selector:
+    app: postgres
+    stack: nagp-ecom-api
+
+    

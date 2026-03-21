@@ -1,0 +1,31 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "C#: ECOM.Identity.Api [https]",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}\\ECOM.Identity.Api\\ECOM.Identity.Api.csproj",
+            "launchConfigurationId": "TargetFramework=;https"
+        },
+        {
+            "name": "C#: ECOM.WebApi [https]",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}\\ECOM.WebApi\\ECOM.WebApi.csproj",
+            "launchConfigurationId": "TargetFramework=;https"
+        },
+    ],
+    "compounds": [
+        {
+            "name": "Ecom APIs",
+            "configurations": [
+                "C#: ECOM.Identity.Api [https]",
+                "C#: ECOM.WebApi [https]"
+            ]
+        }
+    ]
+}
