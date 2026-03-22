@@ -30,7 +30,7 @@ spec:
     spec:
       containers:
       - name: nagp-ecom-ui
-        image: docker.io/ankurmathur01nagarro/nagp-ecom-ui
+        image: docker.io/ankurmathur01nagarro/nagp-ecom-ui:latest
         resources:
           limits:
             memory: "512Mi"
