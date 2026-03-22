@@ -21,7 +21,7 @@ spec:
     spec:
       initContainers:
         - name: migration
-          image: docker.io/ankurmathur01nagarro/nagp-ecom-migration:0.0.1
+          image: docker.io/ankurmathur01nagarro/nagp-ecom-migration:0.0.2
           env:
             - name: ASPNETCORE_ENVIRONMENT
               value: Kubernetes
