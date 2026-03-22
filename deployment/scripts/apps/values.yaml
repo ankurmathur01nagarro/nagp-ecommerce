@@ -47,14 +47,14 @@ argocd-apps:
     nagp-ecom-infrastructure:
       namespace: argocd
       additionalAnnotations:
-        argocd.argoproj.io/sync-wave: "5"
+        argocd.argoproj.io/sync-wave: "4"
       finalizers:
         - resources-finalizer.argocd.argoproj.io
       project: nagp-ecom
       source:
         repoURL: https://github.com/ankurmathur01nagarro/nagp-ecommerce
         targetRevision: HEAD
-        path: scripts/deployment/common-infra/overlays/local
+        path: deployment/scripts/deployment/common-infra/overlays/local
       destination:
         server: https://kubernetes.default.svc
         namespace: nagp-ecom
@@ -74,7 +74,7 @@ argocd-apps:
       source:
         repoURL: https://github.com/ankurmathur01nagarro/nagp-ecommerce
         targetRevision: HEAD
-        path: scripts/deployment/ui/overlays/local
+        path: deployment/scripts/deployment/ui/overlays/local
       destination:
         server: https://kubernetes.default.svc
         namespace: nagp-ecom
@@ -94,7 +94,7 @@ argocd-apps:
       source:
         repoURL: https://github.com/ankurmathur01nagarro/nagp-ecommerce
         targetRevision: HEAD
-        path: scripts/deployment/web-api/overlays/local
+        path: deployment/scripts/deployment/web-api/overlays/local
       destination:
         server: https://kubernetes.default.svc
         namespace: nagp-ecom
@@ -114,7 +114,7 @@ argocd-apps:
       source:
         repoURL: https://github.com/ankurmathur01nagarro/nagp-ecommerce
         targetRevision: HEAD
-        path: scripts/deployment/identity-api/overlays/local
+        path: deployment/scripts/deployment/identity-api/overlays/local
       destination:
         server: https://kubernetes.default.svc
         namespace: nagp-ecom
