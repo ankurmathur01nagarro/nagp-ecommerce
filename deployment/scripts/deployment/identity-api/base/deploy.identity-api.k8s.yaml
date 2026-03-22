@@ -1,38 +1,27 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: nagp-ecom-api
+  name: nagp-ecom-identity-api
   labels:
-    app: nagp-ecom-api
+    app: nagp-ecom-identity-api
     type: api
     stack: nagp-ecom-api
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: nagp-ecom-api
+      app: nagp-ecom-identity-api
       stack: nagp-ecom-api
   template:
     metadata:
       labels:
-        app: nagp-ecom-api
+        app: nagp-ecom-identity-api
         type: api
         stack: nagp-ecom-api
     spec:
-      initContainers:
-        - name: migration
-          image: nagp-ecom-migration
-          env:
-            - name: POSTGRES_PASSWORD
-              valueFrom:
-                configMapKeyRef:
-                  name: secrets-nagp
-                  key: POSTGRES_PASSWORD
-            - name: ConnectionStrings__Default
-              value: "Host=postgres;Port=5432;Database=ecomdb;Username=postgres;Password=$(POSTGRES_PASSWORD)"
       containers:
-        - name: nagp-ecom-api
-          image: nagp-ecom-webapi
+        - name: nagp-ecom-identity-api
+          image: nagp-ecom-identity-api
           ports:
             - name: http
               containerPort: 8080
@@ -41,18 +30,21 @@ spec:
               value: Kubernetes
             - name: POSTGRES_PASSWORD
               valueFrom:
-                configMapKeyRef:
+                secretKeyRef:
                   name: secrets-nagp
                   key: POSTGRES_PASSWORD
+            - name: POSTGRES_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: secrets-nagp
+                  key: POSTGRES_USERNAME
             - name: ConnectionStrings__Default
-              value: "Host=postgres;Port=5432;Database=ecomdb;Username=postgres;Password=$(POSTGRES_PASSWORD)"
-            - name: IdentityApi__ClientId
-              value: "ecom-api"
-            - name: IdentityApi__ClientSecret
+              value: "Host=postgres;Port=5432;Database=ecomdb;Username=$(POSTGRES_USERNAME);Password=$(POSTGRES_PASSWORD)"
+            - name: OpenIddict__Clients__EcomApi__ClientSecret
               valueFrom:
                 secretKeyRef:
                   name: identity-api-secrets
-                  key: ecom-api-client-secret
+                  key: ECOMAPI_CLIENT_SECRET
           resources:
             requests:
               cpu: 100m

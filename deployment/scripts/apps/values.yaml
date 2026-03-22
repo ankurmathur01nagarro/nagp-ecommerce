@@ -44,6 +44,26 @@ argocd-apps:
         - '*'
 
   applications:
+    nagp-ecom-infrastructure:
+      namespace: argocd
+      additionalAnnotations:
+        argocd.argoproj.io/sync-wave: "5"
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+      project: nagp-ecom
+      source:
+        repoURL: https://github.com/ankurmathur01nagarro/nagp-ecommerce
+        targetRevision: HEAD
+        path: scripts/deployment/common-infra/overlays/local
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: nagp-ecom
+      syncPolicy:
+        syncOptions:
+          - CreateNamespace=true
+        automated:
+          prune: true
+          selfHeal: true
     nagp-ecom-ui:
       namespace: argocd
       additionalAnnotations:
@@ -54,7 +74,7 @@ argocd-apps:
       source:
         repoURL: https://github.com/ankurmathur01nagarro/nagp-ecommerce
         targetRevision: HEAD
-        path: ui/deployment
+        path: scripts/deployment/ui/overlays/local
       destination:
         server: https://kubernetes.default.svc
         namespace: nagp-ecom
@@ -74,7 +94,27 @@ argocd-apps:
       source:
         repoURL: https://github.com/ankurmathur01nagarro/nagp-ecommerce
         targetRevision: HEAD
-        path: api/deployment/overlays/local
+        path: scripts/deployment/web-api/overlays/local
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: nagp-ecom
+      syncPolicy:
+        syncOptions:
+          - CreateNamespace=true
+        automated:
+          prune: true
+          selfHeal: true
+    nagp-ecom-identity-api:
+      namespace: argocd
+      additionalAnnotations:
+        argocd.argoproj.io/sync-wave: "5"
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+      project: nagp-ecom
+      source:
+        repoURL: https://github.com/ankurmathur01nagarro/nagp-ecommerce
+        targetRevision: HEAD
+        path: scripts/deployment/identity-api/overlays/local
       destination:
         server: https://kubernetes.default.svc
         namespace: nagp-ecom

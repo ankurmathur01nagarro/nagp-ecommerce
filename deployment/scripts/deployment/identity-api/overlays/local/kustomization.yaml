@@ -4,8 +4,7 @@ kind: Kustomization
 resources:
   - ../../base
 
+namespace: nagp-ecom
 commonAnnotations:
   deployment.environment: local
 
-patches:
-  - path: patch.statefulSet.database.k8s.yaml

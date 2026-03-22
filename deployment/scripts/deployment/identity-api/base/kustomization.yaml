@@ -1,0 +1,10 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: nagp-ecom
+
+resources:
+  - httproute.identity-api.k8s.yaml
+  - deploy.identity-api.k8s.yaml
+  - service.identity-api.k8s.yaml
+  - secret.identity-api.k8s.yaml

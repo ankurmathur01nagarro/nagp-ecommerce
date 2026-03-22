@@ -11,11 +11,3 @@ commonAnnotations:
 patches:
   - path: patch.pvc.postgres.cloud.yaml
   - path: patch.statefulset.postgres.cloud.yaml
-
-configMapGenerator:
-  - name: secrets-nagp
-    options:
-      disableNameSuffixHash: true
-    behavior: replace
-    files:
-      - .secrets-nagp.env
