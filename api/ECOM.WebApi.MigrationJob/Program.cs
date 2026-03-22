@@ -16,7 +16,7 @@ builder.ConfigureServices((app, services) =>
     services.AddDbContext<EcomDbContext>(o =>
     {
         o.UseNpgsql(
-            app.Configuration.GetConnectionString("PostgresConnString"),
+            app.Configuration.GetConnectionString("Default"),
             pg =>
             {
                 pg.SetPostgresVersion(17, 0);
