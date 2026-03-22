@@ -7,7 +7,6 @@ resources:
   - secret.postgres.k8s.yaml
   - secret.identity-api.k8s.yaml
 
-namespace: nagp-ecom
 commonAnnotations:
   deployment.environment: local
 
