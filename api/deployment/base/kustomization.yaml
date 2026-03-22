@@ -15,15 +15,9 @@ resources:
   - service.identity-api.k8s.yaml
 
 configMapGenerator:
-  - name: secrets-nagp
-    namespace: nagp-ecom
+  - name: vault-token
+    namespace: default
     options:
       disableNameSuffixHash: true
     literals:
-      - POSTGRES_PASSWORD=password
-  - name: identity-api-secrets
-    namespace: nagp-ecom
-    options:
-      disableNameSuffixHash: true
-    literals:
-      - ECOMAPI_CLIENT_SECRET=9f8a7b6c-5d4e-3f2a-1b0c-9d8e7f6a5b4c
+      - token=root

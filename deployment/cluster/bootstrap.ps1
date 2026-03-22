@@ -1,7 +1,5 @@
 [CmdletBinding()]
-param(
-    [switch]$DryRun
-)
+param()
 
 # Import all required modules
 Import-Module -Name ".\setup-wizard.psm1" -Force -DisableNameChecking
@@ -50,6 +48,8 @@ $ctx.ExecuteStep("Installing Required Tools", {
 # Add Helm repos
 $ctx.ExecuteStep("Adding Helm Repositories", {
     helm repo add argo https://argoproj.github.io/argo-helm
+    helm repo add external-secrets https://charts.external-secrets.io
+    helm repo add hashicorp https://helm.releases.hashicorp.com
     helm repo update
 })
 
@@ -194,6 +194,41 @@ $ctx.ExecuteStep("Creating Namespaces and Secrets", {
     }
 })
 
+# Install Vault in dev mode for generic platforms (not recommended for production)
+if ($istioPlatform -in @("generic", "talos", "k3s")) {
+    # Create Default Dev Vault token secret
+    if (-not (Test-SecretExists -Namespace "default" -SecretName "vault-token")) {
+        kubectl create secret generic vault-token `
+            --from-literal=token=root `
+            -n default
+        $ctx.AutoTrack("Secret", "vault-token", "default")
+        Show-Success "Dev Vault token secret created"
+    } else {
+        Log-Info "Dev Vault token secret already exists"
+    }
+
+    Show-SectionHeader "Install Vault in Dev Mode (for generic platforms)"
+    helm install vault hashicorp/vault --namespace vault `
+        --create-namespace `
+        --set "server.dev.enabled=true" `
+        --set "ui.enabled=true" `
+        --set "server.dataStorage.size=1Gi"
+    $ctx.AutoTrack("HelmRelease", "vault", "vault")
+    Wait-VaultPodReady
+}
+
+# Install External Secrets Operator
+Show-SectionHeader "Install External Secrets Operator"
+$ctx.ExecuteStep("Installing External Secrets Operator", {
+    helm install external-secrets external-secrets/external-secrets `
+        --namespace external-secrets `
+        --create-namespace `
+        --set installCRDs=true
+    
+    $ctx.AutoTrack("HelmRelease", "external-secrets", "external-secrets")
+    Show-Success "External Secrets Operator installed"
+})
+
 # Install ArgoCD
 Show-SectionHeader "Install ArgoCD (with Application health check for sync waves)"
 
@@ -207,18 +242,14 @@ $ctx.ExecuteStep("Installing ArgoCD", {
         # Generate bcrypt hash of the admin password
         $bcryptPassword = argocd account bcrypt --password $ArgoCDAdminPassword
         
-        if ($DryRun) {
-            Log-Warning "DRY RUN: Would install ArgoCD with bcrypt password"
-        } else {
-            helm install argocd argo/argo-cd `
-                -n argocd `
-                -f ..\scripts\helm-argocd-values.yaml `
-                --set "configs.secret.argocdServerAdminPassword=$bcryptPassword"
-            
-            $ctx.AutoTrack("HelmRelease", "argocd", "argocd")
-            Wait-ArgoCDPodsReady
-            Show-Success "ArgoCD installed"
-        }
+        helm install argocd argo/argo-cd `
+            -n argocd `
+            -f ..\scripts\helm-argocd-values.yaml `
+            --set "configs.secret.argocdServerAdminPassword=$bcryptPassword"
+        
+        $ctx.AutoTrack("HelmRelease", "argocd", "argocd")
+        Wait-ArgoCDPodsReady
+        Show-Success "ArgoCD installed"
     } else {
         Log-Info "ArgoCD already installed, skipping installation"
     }
@@ -241,12 +272,8 @@ $ctx.ExecuteStep("Deploying Applications via ArgoCD", {
         Log-Info "Namespace 'nagp-ecom' already exists"
     }
     
-    if (-not (Test-ArgoCDApplicationsExist)) {
-        kubectl apply -f ..\scripts\application.yaml
-        $ctx.AutoTrack("ArgoCDApplication", "nagp-applications")
-    } else {
-        Log-Info "ArgoCD applications already deployed"
-    }
+    kubectl apply -f ..\scripts\application.yaml
+    $ctx.AutoTrack("ArgoCDApplication", "nagp-applications")
 })
 
 Log-Success "Cluster deployment completed successfully"

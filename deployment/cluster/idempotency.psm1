@@ -225,16 +225,6 @@ function Test-GatewayAPICRDsInstalled {
     }
 }
 
-# Test if ArgoCD Application resources are created
-function Test-ArgoCDApplicationsExist {
-    try {
-        $result = kubectl get applications -n argocd -o json 2>$null | ConvertFrom-Json
-        return $result.items.Count -gt 0
-    } catch {
-        return $false
-    }
-}
-
 # ============================================================================
 # General State Checks
 # ============================================================================
@@ -246,7 +236,6 @@ function Get-ClusterSetupStatus {
         IstioInstalled = Test-IstioInstalled
         ArgoCDInstalled = Test-ArgoCDInstalled
         GatewayAPICRDs = Test-GatewayAPICRDsInstalled
-        ArgoCDApplications = Test-ArgoCDApplicationsExist
         NamespaceObservability = Test-NamespaceExists "observability"
         NamespaceArgoCD = Test-NamespaceExists "argocd"
         NamespaceNagpEcom = Test-NamespaceExists "nagp-ecom"

@@ -28,11 +28,16 @@ spec:
           env:
             - name: POSTGRES_PASSWORD
               valueFrom:
-                configMapKeyRef:
+                secretKeyRef:
                   name: secrets-nagp
                   key: POSTGRES_PASSWORD
+            - name: POSTGRES_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: secrets-nagp
+                  key: POSTGRES_USERNAME
             - name: ConnectionStrings__Default
-              value: "Host=postgres;Port=5432;Database=ecomdb;Username=postgres;Password=$(POSTGRES_PASSWORD)"
+              value: "Host=postgres;Port=5432;Database=ecomdb;Username=$(POSTGRES_USERNAME);Password=$(POSTGRES_PASSWORD)"
             - name: OpenIddict__Clients__EcomApi__ClientSecret
               valueFrom:
                 secretKeyRef:

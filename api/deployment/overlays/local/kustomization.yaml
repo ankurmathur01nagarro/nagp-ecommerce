@@ -3,26 +3,13 @@ kind: Kustomization
 
 resources:
   - ../../base
+  - secretstore.hashicorp-vault.k8s.yaml
+  - secret.postgres.k8s.yaml
+  - secret.identity-api.k8s.yaml
 
 namespace: nagp-ecom
 commonAnnotations:
   deployment.environment: local
 
 patches:
-  - path: patch.statefulset.postgres.local.yaml
-
-configMapGenerator:
-  - name: secrets-nagp
-    namespace: nagp-ecom
-    options:
-      disableNameSuffixHash: true
-    behavior: replace
-    files:
-      - .secrets-nagp.env
-  - name: identity-api-secrets
-    namespace: nagp-ecom
-    options:
-      disableNameSuffixHash: true
-    behavior: replace
-    files:
-      - .secrets-identity-api.env
+  - path: patch.statefulSet.database.k8s.yaml
