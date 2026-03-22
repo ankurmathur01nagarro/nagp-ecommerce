@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
         - name: nagp-ecom-identity-api
-          image: nagp-ecom-identity-api
+          image: docker.io/ankurmathur01nagarro/nagp-ecom-identity-api
           ports:
             - name: http
               containerPort: 8080

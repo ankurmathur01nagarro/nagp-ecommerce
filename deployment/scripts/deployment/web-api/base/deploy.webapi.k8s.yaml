@@ -21,7 +21,7 @@ spec:
     spec:
       initContainers:
         - name: migration
-          image: nagp-ecom-migration
+          image: docker.io/ankurmathur01nagarro/nagp-ecom-migration
           env:
             - name: ASPNETCORE_ENVIRONMENT
               value: Kubernetes
@@ -39,7 +39,7 @@ spec:
               value: "Host=postgres;Port=5432;Database=ecomdb;Username=$(POSTGRES_USERNAME);Password=$(POSTGRES_PASSWORD)"
       containers:
         - name: nagp-ecom-api
-          image: nagp-ecom-webapi
+          image: docker.io/ankurmathur01nagarro/nagp-ecom-webapi
           ports:
             - name: http
               containerPort: 8080
