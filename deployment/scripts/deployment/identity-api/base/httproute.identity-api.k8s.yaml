@@ -18,6 +18,6 @@ spec:
             type: PathPrefix
             value: /connect
       backendRefs:
-        - name: ecom-identity-api
+        - name: nagp-ecom-identity-api
           namespace: nagp-ecom
           port: 80
