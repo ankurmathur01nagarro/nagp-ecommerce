@@ -12,3 +12,6 @@ deployment/scripts/**/overlays/**/charts
 
 **/local-truenas/config-iscsi.yaml
 **/local-truenas/config-nfs.yaml
+deployment/letsencrypt_backup.tar
+deployment/pve-root-ca.cer
+deployment/cluster/pve.csr

@@ -3,9 +3,6 @@ kind: Kustomization
 
 resources:
   - ../../base
-  - secretstore.hashicorp-vault.k8s.yaml
-  - secret.postgres.k8s.yaml
-  - secret.identity-api.k8s.yaml
 
 commonAnnotations:
   deployment.environment: local
