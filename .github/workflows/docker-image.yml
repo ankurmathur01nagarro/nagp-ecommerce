@@ -118,5 +118,5 @@ jobs:
         Pop-Location
         
         git add .
-        git commit -m "Set image tag to `${{ env.image_tag }}`"
+        git commit -m "Set image tag to ${{ env.image_tag }}"
         git push
