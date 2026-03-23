@@ -10,16 +10,74 @@ env:
   docker_pat: ${{ secrets.DOCKER_REGISTRY_PAT }}
   
 jobs:
-  build:
+  build-and-test:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    
+
+    - name: Build UI
+      shell: 'pwsh'
+      run: |
+        cd ./ui
+        npm run build
+    - name: Build Identity API
+      shell: 'pwsh'
+      run: |
+        cd ./api/ECOM.Identity.Api
+        dotnet build --restore
+    - name: Build Database Migration
+      shell: 'pwsh'
+      run: |
+        cd ./api/ECOM.WebApi.MigrationJob
+        dotnet build --restore
+    - name: Build Web Api
+      shell: 'pwsh'
+      run: |
+        cd ./api/ECOM.WebApi
+        dotnet build --restore
+  
+  build-container-images:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
     - name: Docker Login
       uses: docker/login-action@v4.0.0
       with:
         username: ankurmathur01nagarro
         password: ${{ env.docker_pat }}
+    
+    - name: Build and push UI Docker images
+      uses: docker/build-push-action@v7.0.0
+      with:
+        push: true
+        # Build's context is the set of files located in the specified PATH or URL
+        context: ./ui
+        # Path to the Dockerfile
+        file: ./ui/Dockerfile
+        # List of tags
+        tags: docker.io/ankurmathur01nagarro/nagp-ecom-ui:${{ env.image_tag }},docker.io/ankurmathur01nagarro/nagp-ecom-ui:latest
+    
+    - name: Build and push Docker images
+      uses: docker/build-push-action@v7.0.0
+      with:
+        push: true
+        # Build's context is the set of files located in the specified PATH or URL
+        context: ./ui
+        # Path to the Dockerfile
+        file: ./ui/Dockerfile
+        # List of tags
+        tags: docker.io/ankurmathur01nagarro/nagp-ecom-ui:${{ env.image_tag }},docker.io/ankurmathur01nagarro/nagp-ecom-ui:latest
+    
+    - name: Build and push Docker images
+      uses: docker/build-push-action@v7.0.0
+      with:
+        push: true
+        # Build's context is the set of files located in the specified PATH or URL
+        context: ./ui
+        # Path to the Dockerfile
+        file: ./ui/Dockerfile
+        # List of tags
+        tags: docker.io/ankurmathur01nagarro/nagp-ecom-ui:${{ env.image_tag }},docker.io/ankurmathur01nagarro/nagp-ecom-ui:latest
     
     - name: Build and push Docker images
       uses: docker/build-push-action@v7.0.0
