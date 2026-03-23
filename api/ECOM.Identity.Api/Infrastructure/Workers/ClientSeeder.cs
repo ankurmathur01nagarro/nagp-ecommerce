@@ -29,6 +29,7 @@ public class ClientSeeder(IServiceProvider serviceProvider) : IHostedService
         var descriptor = new OpenIddictApplicationDescriptor
         {
             ClientId = "ecom-api",
+            ClientType = ClientTypes.Public,
             ClientSecret = clientSecret,
             DisplayName = "ECOM Web API",
             Permissions =

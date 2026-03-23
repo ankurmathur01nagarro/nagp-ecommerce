@@ -1,0 +1,15 @@
+# .gcloudignore
+
+# Always ignore these
+.gcloudignore
+.git
+.gitignore
+**/node_modules
+**/*.md
+**/.venv
+**/bin
+**/obj
+**/__pycache__/
+**/*.pyc
+**/.env
+**/.env.*
