@@ -6,4 +6,8 @@ namespace: nagp-ecom
 resources:
   - ../../base
 
+images:
+  - name: nagp-ecom-ui
+    newName: docker.io/ankurmathur01nagarro/nagp-ecom-ui
+    newTag: 0.0.2
 

@@ -8,3 +8,7 @@ namespace: nagp-ecom
 commonAnnotations:
   deployment.environment: local
 
+images:
+  - name: nagp-ecom-identity-api
+    newName: docker.io/ankurmathur01nagarro/nagp-ecom-identity-api
+    newTag: 0.0.2

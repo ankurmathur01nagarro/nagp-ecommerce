@@ -7,3 +7,11 @@ resources:
 commonAnnotations:
   deployment.environment: local
 
+images:
+  - name: nagp-ecom-migration
+    newName: docker.io/ankurmathur01nagarro/nagp-ecom-migration
+    newTag: 0.0.2
+  - name: nagp-ecom-webapi
+    newName: docker.io/ankurmathur01nagarro/nagp-ecom-webapi
+    newTag: 0.0.2
+

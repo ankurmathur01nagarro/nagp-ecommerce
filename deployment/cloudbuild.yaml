@@ -1,0 +1,27 @@
+substitutions:
+  _IMAGE_TAG: 'latest'
+
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        docker login --username=$$USERNAME --password=$$PASSWORD
+        docker build -t $$USERNAME/nagp-ecom-ui:${_IMAGE_TAG} ..\ui
+        docker push $$USERNAME/nagp-ecom-ui:${_IMAGE_TAG}
+        docker build -t $$USERNAME/nagp-ecom-migration:${_IMAGE_TAG} ..\api\Dockerfile.migration
+        docker push $$USERNAME/nagp-ecom-migration:${_IMAGE_TAG}
+        docker build -t $$USERNAME/nagp-ecom-webapi:${_IMAGE_TAG} ..\api\Dockerfile.api
+        docker push $$USERNAME/nagp-ecom-webapi:${_IMAGE_TAG}
+        docker build -t $$USERNAME/nagp-ecom-identity-api:${_IMAGE_TAG} ..\api\Dockerfile.identity
+        docker push $$USERNAME/nagp-ecom-identity-api:${_IMAGE_TAG}
+    secretEnv: ['USERNAME', 'PASSWORD']
+    env:
+      - 'DOCKER_BUILDKIT=1'
+availableSecrets:
+  secretManager:
+    - versionName: projects/$PROJECT_NUMBER/secrets/docker-password/versions/1
+      env: 'PASSWORD'
+    - versionName: projects/$PROJECT_NUMBER/secrets/docker-username/versions/1
+      env: 'USERNAME'
