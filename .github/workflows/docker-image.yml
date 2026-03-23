@@ -38,6 +38,7 @@ jobs:
         dotnet build --restore
   
   build-container-images:
+    needs: build-and-test
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
