@@ -93,6 +93,8 @@ jobs:
         tags: docker.io/ankurmathur01nagarro/nagp-ecom-identity-api:${{ env.image_tag }},docker.io/ankurmathur01nagarro/nagp-ecom-identity-api:latest
   release:
     needs: build-container-images
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
