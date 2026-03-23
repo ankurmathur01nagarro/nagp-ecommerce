@@ -59,35 +59,64 @@ jobs:
         # List of tags
         tags: docker.io/ankurmathur01nagarro/nagp-ecom-ui:${{ env.image_tag }},docker.io/ankurmathur01nagarro/nagp-ecom-ui:latest
     
-    - name: Build and push Docker images
+    - name: Build and push Database Migration Docker images
       uses: docker/build-push-action@v7.0.0
       with:
         push: true
         # Build's context is the set of files located in the specified PATH or URL
-        context: ./ui
+        context: ./api
         # Path to the Dockerfile
-        file: ./ui/Dockerfile
+        file: ./api/Dockerfile.migration
         # List of tags
-        tags: docker.io/ankurmathur01nagarro/nagp-ecom-ui:${{ env.image_tag }},docker.io/ankurmathur01nagarro/nagp-ecom-ui:latest
+        tags: docker.io/ankurmathur01nagarro/nagp-ecom-migration:${{ env.image_tag }},docker.io/ankurmathur01nagarro/nagp-ecom-migration:latest
     
-    - name: Build and push Docker images
+    - name: Build and push Web API Docker images
       uses: docker/build-push-action@v7.0.0
       with:
         push: true
         # Build's context is the set of files located in the specified PATH or URL
-        context: ./ui
+        context: ./api
         # Path to the Dockerfile
-        file: ./ui/Dockerfile
+        file: ./api/Dockerfile.api
         # List of tags
-        tags: docker.io/ankurmathur01nagarro/nagp-ecom-ui:${{ env.image_tag }},docker.io/ankurmathur01nagarro/nagp-ecom-ui:latest
+        tags: docker.io/ankurmathur01nagarro/nagp-ecom-webapi:${{ env.image_tag }},docker.io/ankurmathur01nagarro/nagp-ecom-webapi:latest
     
-    - name: Build and push Docker images
+    - name: Build and push Identity API Docker images
       uses: docker/build-push-action@v7.0.0
       with:
         push: true
         # Build's context is the set of files located in the specified PATH or URL
-        context: ./ui
+        context: ./api
         # Path to the Dockerfile
-        file: ./ui/Dockerfile
+        file: ./api/Dockerfile.identity
         # List of tags
-        tags: docker.io/ankurmathur01nagarro/nagp-ecom-ui:${{ env.image_tag }},docker.io/ankurmathur01nagarro/nagp-ecom-ui:latest
+        tags: docker.io/ankurmathur01nagarro/nagp-ecom-identity-api:${{ env.image_tag }},docker.io/ankurmathur01nagarro/nagp-ecom-identity-api:latest
+  release:
+    needs: build-container-images
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: imranismail/setup-kustomize@v3
+    - name: Update image tags and commit
+      shell: 'pwsh'
+      run: |
+        cd ./deployment/scripts/deployment
+        
+        Push-Location
+        cd ui/overlays/local
+        kustomize edit set image nagp-ecom-ui=*:${{ env.image_tag }}
+        Pop-Location
+        
+        Push-Location
+        cd web-api/overlays/local
+        kustomize edit set image nagp-ecom-migration=*:${{ env.image_tag }} nagp-ecom-webapi=*:${{ env.image_tag }}
+        Pop-Location
+        
+        Push-Location
+        cd identity-api/overlays/local
+        kustomize edit set image nagp-ecom-identity-api=*:${{ env.image_tag }}
+        Pop-Location
+        
+        git add .
+        git commit -m "Set image tag to `${{ env.image_tag }}`"
+        git push
