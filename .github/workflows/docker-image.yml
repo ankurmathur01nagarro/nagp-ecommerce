@@ -31,4 +31,4 @@ jobs:
         # Path to the Dockerfile
         file: ./ui/Dockerfile
         # List of tags
-        tags: nagp-ecom-ui:${{ env.image_tag }},nagp-ecom-ui:latest
+        tags: docker.io/ankurmathur01nagarro/nagp-ecom-ui:${{ env.image_tag }},docker.io/ankurmathur01nagarro/nagp-ecom-ui:latest
