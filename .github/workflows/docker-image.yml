@@ -19,6 +19,7 @@ jobs:
       shell: 'pwsh'
       run: |
         cd ./ui
+        npm ci
         npm run build
     - name: Build Identity API
       shell: 'pwsh'
