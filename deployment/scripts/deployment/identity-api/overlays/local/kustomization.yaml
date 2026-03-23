@@ -2,13 +2,13 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-  - ../../base
+- ../../base
 
 namespace: nagp-ecom
 commonAnnotations:
   deployment.environment: local
 
 images:
-  - name: nagp-ecom-identity-api
-    newName: docker.io/ankurmathur01nagarro/nagp-ecom-identity-api
-    newTag: 0.0.2
+- name: nagp-ecom-identity-api
+  newName: docker.io/ankurmathur01nagarro/nagp-ecom-identity-api
+  newTag: 27f6ce90e6f69a137dbbabbe574b8d77936361a9

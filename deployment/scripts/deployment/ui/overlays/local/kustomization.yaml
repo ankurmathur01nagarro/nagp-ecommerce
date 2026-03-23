@@ -4,10 +4,9 @@ kind: Kustomization
 namespace: nagp-ecom
 
 resources:
-  - ../../base
+- ../../base
 
 images:
-  - name: nagp-ecom-ui
-    newName: docker.io/ankurmathur01nagarro/nagp-ecom-ui
-    newTag: 0.0.2
-
+- name: nagp-ecom-ui
+  newName: docker.io/ankurmathur01nagarro/nagp-ecom-ui
+  newTag: 27f6ce90e6f69a137dbbabbe574b8d77936361a9
