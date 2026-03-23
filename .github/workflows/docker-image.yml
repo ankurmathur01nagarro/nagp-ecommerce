@@ -96,7 +96,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - uses: imranismail/setup-kustomize@v3
+    - uses: philiplehmann/setup-kustomize@v2.2.5
     - name: Update image tags and commit
       shell: 'pwsh'
       run: |
