@@ -19,19 +19,35 @@ public class ClientSeeder(IServiceProvider serviceProvider) : IHostedService
         await dbContext.Database.MigrateAsync(ct);
 
         await SeedUsersAsync(scope.ServiceProvider, ct);
+        await SeedClientAsync(
+            scope.ServiceProvider,
+            "EcomApi",
+            "ECOM Web API",
+            ct);
+    }
 
-        var manager = scope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>();
-        var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+    public Task StopAsync(CancellationToken ct) => Task.CompletedTask;
 
-        var clientSecret = config["OpenIddict:Clients:EcomApi:ClientSecret"]
-            ?? throw new InvalidOperationException("OpenIddict:Clients:EcomApi:ClientSecret is not configured.");
-
+    private static async Task SeedClientAsync(
+        IServiceProvider services,
+        string clientName,
+        string clientDisplayName,
+        CancellationToken ct)
+    {
+        var manager = services.GetRequiredService<IOpenIddictApplicationManager>();
+        var config = services.GetRequiredService<IConfiguration>();
+        
+        var clientId = config[$"OpenIddict:Clients:{clientName}:ClientId"]
+            ?? throw new InvalidOperationException($"OpenIddict:Clients:{clientName}:ClientId is not configured.");
+        var clientSecret = config[$"OpenIddict:Clients:{clientName}:ClientSecret"]
+            ?? throw new InvalidOperationException($"OpenIddict:Clients:{clientName}:ClientSecret is not configured.");
+        
         var descriptor = new OpenIddictApplicationDescriptor
         {
-            ClientId = "ecom-api",
+            ClientId = clientId,
             ClientType = ClientTypes.Confidential,
             ClientSecret = clientSecret,
-            DisplayName = "ECOM Web API",
+            DisplayName = clientDisplayName,
             Permissions =
             {
                 Permissions.Endpoints.Token,
@@ -41,14 +57,12 @@ public class ClientSeeder(IServiceProvider serviceProvider) : IHostedService
             }
         };
 
-        var existing = await manager.FindByClientIdAsync("ecom-api", ct);
+        var existing = await manager.FindByClientIdAsync(descriptor.ClientId, ct);
         if (existing is null)
             await manager.CreateAsync(descriptor, ct);
         else
             await manager.UpdateAsync(existing, descriptor, ct);
     }
-
-    public Task StopAsync(CancellationToken ct) => Task.CompletedTask;
 
     private static async Task SeedUsersAsync(IServiceProvider services, CancellationToken ct)
     {

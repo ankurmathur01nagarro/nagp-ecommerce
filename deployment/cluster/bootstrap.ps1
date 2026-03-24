@@ -94,7 +94,8 @@ try {
     $ArgoCDAdminPassword = Get-ArgoCDPassword
     $GrafanaAdminPassword = Get-GrafanaPassword
     $NewRelicApiKey = Get-NewRelicApiKey
-    Show-ConfigurationSummary -ArgoCDPassword $ArgoCDAdminPassword -GrafanaPassword $GrafanaAdminPassword -NewRelicApiKey $NewRelicApiKey
+    $InstallDemocraticCsi = Get-DemocraticCsiOption
+    Show-ConfigurationSummary -ArgoCDPassword $ArgoCDAdminPassword -GrafanaPassword $GrafanaAdminPassword -NewRelicApiKey $NewRelicApiKey -InstallDemocraticCsi $InstallDemocraticCsi
 
     $proceed = Confirm-Setup
     if (-not $proceed) {
@@ -192,30 +193,17 @@ $ctx.ExecuteStep("Creating Namespaces and Secrets", {
     } else {
         Log-Info "Grafana secret already exists"
     }
+
+    # Azure Service Principal Secret
+    Write-SpectreHost "[yellow]Azure Service Principal Setup[/]"
+    $az_clientId = Read-SpectreText -Prompt "Enter ClientId"
+    $az_clientSecret = Read-SpectreText -Prompt "Enter ClientSecret" -Secret
+
+    kubectl create secret generic secret-azure-sp `
+        --from-literal=ClientID="$az_clientId" `
+        --from-literal=ClientSecret="$az_clientSecret" `
+        -n default
 })
-
-# Install Vault in dev mode for generic platforms (not recommended for production)
-if ($istioPlatform -in @("generic", "talos", "k3s")) {
-    # Create Default Dev Vault token secret
-    if (-not (Test-SecretExists -Namespace "default" -SecretName "vault-token")) {
-        kubectl create secret generic vault-token `
-            --from-literal=token=root `
-            -n default
-        $ctx.AutoTrack("Secret", "vault-token", "default")
-        Show-Success "Dev Vault token secret created"
-    } else {
-        Log-Info "Dev Vault token secret already exists"
-    }
-
-    Show-SectionHeader "Install Vault in Dev Mode (for generic platforms)"
-    helm install vault hashicorp/vault --namespace vault `
-        --create-namespace `
-        --set "server.dev.enabled=true" `
-        --set "ui.enabled=true" `
-        --set "server.dataStorage.size=1Gi"
-    $ctx.AutoTrack("HelmRelease", "vault", "vault")
-    Wait-VaultPodReady
-}
 
 # Install External Secrets Operator
 Show-SectionHeader "Install External Secrets Operator"
@@ -258,6 +246,16 @@ $ctx.ExecuteStep("Installing ArgoCD", {
 Write-Host ""
 Show-Warning "Access ArgoCD UI"
 Show-SectionHeader "kubectl port-forward service/argocd-server -n argocd 8080:443"
+
+# Install democratic-csi storage driver (conditional)
+if ($InstallDemocraticCsi) {
+    Show-SectionHeader "Install democratic-csi Storage Driver (TrueNAS)"
+    $ctx.ExecuteStep("Installing democratic-csi", {
+        kustomize build ..\scripts\democratic-csi\overlays\local-truenas\ --enable-helm | kubectl apply -f -
+        $ctx.AutoTrack("KubernetesResource", "democratic-csi")
+        Show-Success "democratic-csi installed"
+    })
+}
 
 # Install Applications
 Show-SectionHeader "Install ArgoCD Application that contains all (Apps of App Pattern)"

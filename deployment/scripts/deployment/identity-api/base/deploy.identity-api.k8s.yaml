@@ -40,6 +40,11 @@ spec:
                   key: POSTGRES_USERNAME
             - name: ConnectionStrings__Default
               value: "Host=postgres;Port=5432;Database=ecomdb;Username=$(POSTGRES_USERNAME);Password=$(POSTGRES_PASSWORD)"
+            - name: OpenIddict__Clients__EcomApi__ClientId
+              valueFrom:
+                secretKeyRef:
+                  name: identity-api-secrets
+                  key: ECOMAPI_CLIENT_ID
             - name: OpenIddict__Clients__EcomApi__ClientSecret
               valueFrom:
                 secretKeyRef:

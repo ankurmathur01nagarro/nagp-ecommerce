@@ -334,7 +334,8 @@ function Show-ConfigurationSummary {
     param(
         [string]$ArgoCDPassword,
         [string]$GrafanaPassword,
-        [string]$NewRelicApiKey
+        [string]$NewRelicApiKey,
+        [bool]$InstallDemocraticCsi = $false
     )
 
     Write-SpectreRule "Configuration Summary" "green"
@@ -346,8 +347,21 @@ function Show-ConfigurationSummary {
     } else {
         Write-SpectreHost "[green]New Relic[/]: API Key provided"
     }
+    if ($InstallDemocraticCsi) {
+        Write-SpectreHost "[green]democratic-csi[/]: Will install (TrueNAS)"
+    } else {
+        Write-SpectreHost "[yellow]democratic-csi[/]: SKIP"
+    }
 
     Write-SpectreHost ""
+}
+
+# Prompt for democratic-csi storage installation
+function Get-DemocraticCsiOption {
+    Write-SpectreHost "[yellow]Storage Configuration[/]"
+    $install = Confirm-Spectre -Question "Install democratic-csi storage driver (TrueNAS)?" -DefaultAnswer $false
+    Write-SpectreHost ""
+    return $install
 }
 
 # Confirm before proceeding
@@ -564,6 +578,7 @@ Export-ModuleMember -Function @(
     'Set-KubernetesContext',
     'Confirm-ClusterSelection',
     'Get-KubernetesPlatform',
-    'Get-IstioPlatformValue'
+    'Get-IstioPlatformValue',
+    'Get-DemocraticCsiOption'
 )
 
