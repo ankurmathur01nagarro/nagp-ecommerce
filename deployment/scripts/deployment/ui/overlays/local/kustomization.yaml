@@ -9,4 +9,4 @@ resources:
 images:
 - name: nagp-ecom-ui
   newName: docker.io/ankurmathur01nagarro/nagp-ecom-ui
-  newTag: 6406be0553423f2e4609acce9be08a055409ac56
+  newTag: eaaba5f7ba961a329f97ce9e69965c051e099ac2
