@@ -57,7 +57,7 @@ spec:
                   name: secrets-nagp
                   key: POSTGRES_PASSWORD
             - name: ConnectionStrings__Default
-              value: "Host=postgres;Port=5432;Database=ecomdb;Username=$(POSTGRES_USERNAME);Password=$(POSTGRES_PASSWORD)"
+              value: "Host=postgres;Port=5432;Database=ecomdb;Username=$(POSTGRES_USERNAME);Password=$(POSTGRES_PASSWORD);GssEncMode=Disable"
             - name: IdentityApi__ClientId
               value: "ecom-api"
             - name: IdentityApi__ClientSecret
