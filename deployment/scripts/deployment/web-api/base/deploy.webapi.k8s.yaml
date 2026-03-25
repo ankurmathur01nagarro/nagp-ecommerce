@@ -36,7 +36,7 @@ spec:
                   name: secrets-nagp
                   key: POSTGRES_PASSWORD
             - name: ConnectionStrings__Default
-              value: "Host=postgres;Port=5432;Database=ecomdb;Username=$(POSTGRES_USERNAME);Password=$(POSTGRES_PASSWORD)"
+              value: "Host=postgres;Port=5432;Database=ecomdb;Username=$(POSTGRES_USERNAME);Password=$(POSTGRES_PASSWORD);GSS Encryption Mode=Disable"
       containers:
         - name: nagp-ecom-api
           image: nagp-ecom-webapi
@@ -57,7 +57,7 @@ spec:
                   name: secrets-nagp
                   key: POSTGRES_PASSWORD
             - name: ConnectionStrings__Default
-              value: "Host=postgres;Port=5432;Database=ecomdb;Username=$(POSTGRES_USERNAME);Password=$(POSTGRES_PASSWORD);GssEncMode=Disable"
+              value: "Host=postgres;Port=5432;Database=ecomdb;Username=$(POSTGRES_USERNAME);Password=$(POSTGRES_PASSWORD);GSS Encryption Mode=Disable"
             - name: IdentityApi__ClientId
               value: "ecom-api"
             - name: IdentityApi__ClientSecret
