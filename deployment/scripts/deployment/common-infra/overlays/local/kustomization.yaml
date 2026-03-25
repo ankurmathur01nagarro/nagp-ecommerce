@@ -10,3 +10,4 @@ commonAnnotations:
 
 patches:
   - path: patch.statefulSet.database.k8s.yaml
+  - path: patch.pvc.postgres.k8s.yaml

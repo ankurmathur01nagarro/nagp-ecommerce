@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-postgres-data-volume
+spec:
+  storageClassName: sc-block
+
+    
