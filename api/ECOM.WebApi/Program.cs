@@ -7,6 +7,16 @@ using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+});
+
 builder.Services.AddOpenApi();
 builder.Services.AddControllers();
 builder.RegisterDatabaseServices();
@@ -46,6 +56,7 @@ builder.Services.AddRateLimiter(options =>
 
 var app = builder.Build();
 
+app.UseCors();
 app.MapOpenApi();
 app.MapScalarApiReference();
 

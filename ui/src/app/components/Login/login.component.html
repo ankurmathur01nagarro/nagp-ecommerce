@@ -9,33 +9,39 @@
         <a href="#" class="twitter"><span class="icon-social-twitter"></span>twitter</a>
       </div>
       <div class="col-xs-12 col-sm-6 login">
-        <form action="/" class="validation-engine">
-          <h6>LOGIN</h6>
-          <div class="required form-group">
-            <p>User name or email adress *</p>
-            <input
-              type="text"
-              name="username"
-              class="form-control validate[required]"
-              data-prompt-position="topLeft"
-            />
-          </div>
-          <div class="required form-group">
-            <p>Password *</p>
-            <input
-              type="password"
-              name="password"
-              class="form-control validate[required]"
-              data-prompt-position="topLeft"
-            />
-          </div>
-          <p>
-            <input type="checkbox" name="remember" id="checkbox1" class="stl" value="2" />
-            <label for="checkbox1" class="stl"><span></span>Remember me</label>
-            <a href="#">Fogot your password?</a><br />
-          </p>
-          <input type="submit" name="login" class="btn btn-third-col" value="LOGIN" />
-        </form>
+        <h6>LOGIN</h6>
+        <div class="required form-group">
+          <p>User name or email adress *</p>
+          <input
+            type="text"
+            class="form-control"
+            data-prompt-position="topLeft"
+            [formField]="this.loginForm.username"
+          />
+        </div>
+        <div class="required form-group">
+          <p>Password *</p>
+          <input
+            type="password"
+            class="form-control"
+            data-prompt-position="topLeft"
+            [formField]="this.loginForm.password"
+          />
+        </div>
+        <p>
+          <input type="checkbox" name="remember" id="checkbox1" class="stl" value="2" />
+          <label for="checkbox1" class="stl"><span></span>Remember me</label>
+          <a href="#">Fogot your password?</a><br />
+        </p>
+        @if (token.error()) {
+          <p class="text-danger">Login failed. Please check your credentials.</p>
+        }
+        <input type="submit"
+          [disabled]="token.isLoading()"
+          name="login"
+          class="btn btn-third-col"
+          value="LOGIN"
+          (click)="this.onSubmit()"/>
       </div>
       <div class="col-xs-12 col-sm-6 register">
         <form action="/" class="validation-engine">

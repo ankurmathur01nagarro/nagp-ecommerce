@@ -7,21 +7,28 @@ export interface TokenResponse {
   expiresIn: number;
 }
 
+interface Credentials {
+  username: string;
+  password: string;
+}
+
 @Injectable({ providedIn: "root" })
 export class WebApiService {
   private readonly baseUrl = environment.webApiBaseUrl;
 
-  constructor() {}
+  private readonly credentials = signal<Credentials | undefined>(undefined);
 
-  readonly username = signal("");
-  readonly password = signal("");
+  readonly token = httpResource<TokenResponse>(() => {
+    const creds = this.credentials();
+    if (!creds) return undefined; // skip until explicitly triggered
+    return {
+      url: `${this.baseUrl}/auth/login`,
+      method: "POST",
+      body: creds,
+    };
+  });
 
-  readonly token = httpResource<TokenResponse>(() => ({
-    url: `${this.baseUrl}/login`,
-    method: "POST",
-    body: {
-      username: this.username(),
-      password: this.password()
-    }
-  }));
+  login(username: string, password: string) {
+    this.credentials.set({ username, password });
+  }
 }
