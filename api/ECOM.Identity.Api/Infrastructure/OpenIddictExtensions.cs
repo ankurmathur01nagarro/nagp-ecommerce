@@ -37,7 +37,8 @@ public static class OpenIddictExtensions
             // options.AddSigningCertificate(...)
 
             options.UseAspNetCore()
-                .EnableTokenEndpointPassthrough(); // routes /connect/token to your controller
+                .EnableTokenEndpointPassthrough() // routes /connect/token to your controller
+                .DisableTransportSecurityRequirement(); // allow HTTP (needed for in-cluster pod communication)
         })
         .AddValidation(options =>
         {
