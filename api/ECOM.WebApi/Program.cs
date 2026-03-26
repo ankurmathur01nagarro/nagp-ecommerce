@@ -7,15 +7,23 @@ using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddCors(options =>
+var corsConfig = builder.Configuration.GetSection("Cors");
+var corsEnabled = corsConfig.GetValue<bool>("Enabled");
+var allowedOrigins = corsConfig.GetSection("AllowedOrigins").Get<string[]>() ?? [];
+
+if (corsEnabled)
 {
-    options.AddDefaultPolicy(policy =>
+    builder.Services.AddCors(options =>
     {
-        policy.AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials();
+        options.AddDefaultPolicy(policy =>
+        {
+            policy.WithOrigins(allowedOrigins)
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials();
+        });
     });
-});
+}
 
 builder.Services.AddOpenApi();
 builder.Services.AddControllers();
@@ -56,11 +64,10 @@ builder.Services.AddRateLimiter(options =>
 
 var app = builder.Build();
 
-app.UseCors();
+if (corsEnabled) app.UseCors();
 app.MapOpenApi();
 app.MapScalarApiReference();
 
-app.UseHttpsRedirection();
 app.UseRateLimiter();
 
 // Promote the ecom_auth cookie to an Authorization header so OpenIddict

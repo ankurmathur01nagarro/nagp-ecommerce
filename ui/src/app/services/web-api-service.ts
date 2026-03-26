@@ -14,7 +14,7 @@ interface Credentials {
 
 @Injectable({ providedIn: "root" })
 export class WebApiService {
-  private readonly baseUrl = environment.webApiBaseUrl;
+  private readonly baseUrl = `${environment.webApiBaseUrl}/api`;
 
   private readonly credentials = signal<Credentials | undefined>(undefined);
 
