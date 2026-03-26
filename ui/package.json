@@ -38,8 +38,8 @@
     "tslib": "^2.3.0"
   },
   "devDependencies": {
-    "@angular/build": "^21.2.3",
-    "@angular/cli": "^21.2.3",
+    "@angular/build": "^21.2.4",
+    "@angular/cli": "^21.2.4",
     "@angular/compiler-cli": "^21.2.6",
     "@jefiozie/ngx-aws-deploy": "^4.1.0",
     "@tailwindcss/postcss": "^4.1.12",
