@@ -29,12 +29,14 @@ builder.Services.AddOpenApi();
 builder.Services.AddControllers();
 builder.RegisterDatabaseServices();
 
+builder.Services.AddHeaderPropagation(options => options.Headers.Add("Authorization"));
+
 // HttpClient for calling the Identity API token endpoint
 builder.Services.AddHttpClient("identity", client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["IdentityApi:BaseUrl"]!);
-});
-builder.Services.AddScoped<ITokenService, TokenService>();
+}).AddHeaderPropagation();
+builder.Services.AddScoped<IIdentityService, IdentityService>();
 
 // OpenIddict token validation (reads Bearer token from Authorization header)
 builder.Services.AddOpenIddict()
@@ -81,6 +83,9 @@ app.Use(async (context, next) =>
     }
     await next();
 });
+
+// Must run after cookie promotion so the Authorization header is already set when captured.
+app.UseHeaderPropagation();
 
 app.UseAuthentication();
 app.UseAuthorization();

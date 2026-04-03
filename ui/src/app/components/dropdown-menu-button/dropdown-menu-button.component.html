@@ -1,0 +1,19 @@
+<a href="#" class="pm_item" data-toggle="dropdown" [title]="label() ?? ''">
+  <i [class]="icon()"></i>
+  @if (label()) {
+    <span [class]="hideLabelOn()">{{ label() }}</span>
+  }
+  <ng-content select="[triggerExtra]" />
+</a>
+<div class="dropdown-menu dropdown-menu-right {{ menuClass() }}" role="menu">
+  <span class="dropdown-triangle-up"></span>
+  <a href="#" class="dd-close-btn"><i class="icon_close"></i></a>
+  @if (heading()) {
+    <div class="dropdown-head">
+      <h4 class="pull-left">{{ heading() }}</h4>
+    </div>
+  }
+  <div class="dd-wrapper">
+    <ng-content />
+  </div>
+</div>

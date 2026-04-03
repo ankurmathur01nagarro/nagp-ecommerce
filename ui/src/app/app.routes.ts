@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { LoginComponent } from './components/Login/login.component';
+import { LoginOrRegisterComponent } from './components/LoginOrRegister/loginOrRegister.component';
 import { PageNotFoundComponent } from './components/PageNotFound/page-not-found';
 import { HomeComponent } from './components/Home/home-component';
 import { CatalogComponent } from './components/catalog-component/catalog-component';
@@ -8,8 +8,8 @@ import { FooterComponent } from './components/footer-component/footer-component'
 
 export const routes: Routes = [
   {
-    path: 'login',
-    component: LoginComponent
+    path: 'notloggedin',
+    component: LoginOrRegisterComponent
   },
   {
     path: '',

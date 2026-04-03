@@ -4,7 +4,6 @@ using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using OpenIddict.Abstractions;
 using OpenIddict.Server.AspNetCore;
 using static OpenIddict.Abstractions.OpenIddictConstants;
@@ -13,8 +12,7 @@ namespace ECOM.Identity.Api.Controllers;
 
 [ApiController]
 public partial class AuthorizationController(
-    IdentityDbContext dbContext,
-    IPasswordHasher<Users> passwordHasher,
+    UserManager<ApplicationUser> userManager,
     ILogger<AuthorizationController> logger) : ControllerBase
 {
     [HttpPost("~/connect/token")]
@@ -57,8 +55,7 @@ public partial class AuthorizationController(
 
     private async Task<IActionResult> HandlePasswordGrantAsync(OpenIddictRequest request, CancellationToken ct)
     {
-        var user = await dbContext.Users
-            .FirstOrDefaultAsync(u => u.Username.ToLower() == request.Username!.ToLower(), ct);
+        var user = await userManager.FindByNameAsync(request.Username!);
 
         if (user is null)
         {
@@ -66,30 +63,23 @@ public partial class AuthorizationController(
             return InvalidCredentialsForbid();
         }
 
-        var verificationResult = passwordHasher.VerifyHashedPassword(user, user.PasswordHash, request.Password!);
+        var valid = await userManager.CheckPasswordAsync(user, request.Password!);
 
-        if (verificationResult == PasswordVerificationResult.Failed)
+        if (!valid)
         {
             LogInvalidPassword(request.Username!);
             return InvalidCredentialsForbid();
         }
 
-        if (verificationResult == PasswordVerificationResult.SuccessRehashNeeded)
-        {
-            user.PasswordHash = passwordHasher.HashPassword(user, request.Password!);
-            user.UpdatedAt = DateTimeOffset.UtcNow;
-            await dbContext.SaveChangesAsync(ct);
-            LogPasswordRehashed(request.Username!);
-        }
-
         var identity = new ClaimsIdentity(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
         identity.AddClaim(Claims.Subject, user.Id.ToString());
-        identity.AddClaim(Claims.Name, user.Username);
-        identity.AddClaim(Claims.Email, user.Email);
+        identity.AddClaim(Claims.Name, user.UserName!);
+        identity.AddClaim(Claims.Email, user.Email!);
         identity.AddClaim(Claims.Role, user.Role);
 
         var principal = new ClaimsPrincipal(identity);
         principal.SetScopes(request.GetScopes());
+        principal.SetResources("ecom-api");
 
         return SignIn(principal, OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
     }
@@ -108,7 +98,4 @@ public partial class AuthorizationController(
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Password grant failed: invalid password for user '{Username}'.")]
     private partial void LogInvalidPassword(string username);
-
-    [LoggerMessage(Level = LogLevel.Information, Message = "Rehashed password for user '{Username}'.")]
-    private partial void LogPasswordRehashed(string username);
 }

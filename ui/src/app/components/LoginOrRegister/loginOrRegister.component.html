@@ -1,0 +1,127 @@
+<!-- page body content begin -->
+<div class="pg-body">
+  <div class="container login-register">
+    <div class="row">
+      <div class="whith-f-t">
+        <p>Login / register with facebook or twitter</p>
+        <br />
+        <a href="#" class="facebook"><span class="icon-social-facebook"></span>facebook</a>
+        <a href="#" class="twitter"><span class="icon-social-twitter"></span>twitter</a>
+      </div>
+      <div class="col-xs-12 col-sm-6 login">
+        <div class="form">
+        <h6>LOGIN</h6>
+        <div class="required form-group">
+          <p>User name or email address *</p>
+          <input
+            type="text"
+            class="form-control"
+            [class.is-invalid]="this.loginForm.username().invalid() && this.loginForm.username().touched()"
+            [formField]="this.loginForm.username"
+          />
+          @if (this.loginForm.username().invalid() && this.loginForm.username().touched()) {
+            @for (error of this.loginForm.username().errors(); track error.kind) {
+              <div class="invalid-feedback">{{ error.message ?? error.kind }}</div>
+            }
+          }
+        </div>
+        <div class="required form-group">
+          <p>Password *</p>
+          <input
+            type="password"
+            class="form-control"
+            [class.is-invalid]="this.loginForm.password().invalid() && this.loginForm.password().touched()"
+            [formField]="this.loginForm.password"
+          />
+          @if (this.loginForm.password().invalid() && this.loginForm.password().touched()) {
+            @for (error of this.loginForm.password().errors(); track error.kind) {
+              <div class="invalid-feedback">{{ error.message ?? error.kind }}</div>
+            }
+          }
+        </div>
+        <p>
+          <input type="checkbox" name="remember" id="cbRemember" class="stl" value="2" />
+          <label for="cbRemember" class="stl"><span></span>Remember me</label>
+          <a href="/forgot-password">Fogot your password?</a><br />
+        </p>
+        @if (this.authStore.loginError()) {
+          <p class="text-danger">{{ this.authStore.loginError() }}</p>
+        }
+        <input type="button"
+          [disabled]="this.authStore.isLoading()"
+          name="login"
+          class="btn btn-third-col submit"
+          value="LOGIN"
+          (click)="this.onLoginSubmit()"/>
+        </div>
+      </div>
+      <div class="col-xs-12 col-sm-6 register">
+        <div class="form">
+          <h6>REGISTER</h6>
+          <div class="required form-group">
+            <p>User name *</p>
+            <input
+              type="text"
+              [formField]="this.registerForm.username"
+              [class.is-invalid]="this.registerForm.username().invalid() && this.registerForm.username().touched()"
+              class="form-control"
+            />
+            @if (this.registerForm.username().invalid() && this.registerForm.username().touched()) {
+              @for (error of this.registerForm.username().errors(); track error.kind) {
+                <div class="invalid-feedback">{{ error.message ?? error.kind }}</div>
+              }
+            }
+          </div>
+          <div class="required form-group">
+            <p>Email address *</p>
+            <input
+              type="email"
+              [formField]="this.registerForm.email"
+              [class.is-invalid]="this.registerForm.email().invalid() && this.registerForm.email().touched()"
+              class="form-control"
+            />
+            @if (this.registerForm.email().invalid() && this.registerForm.email().touched()) {
+              @for (error of this.registerForm.email().errors(); track error.kind) {
+                <div class="invalid-feedback">{{ error.message ?? error.kind }}</div>
+              }
+            }
+          </div>
+          <div class="required form-group">
+            <p>Password *</p>
+            <input
+              type="password"
+              [formField]="this.registerForm.password"
+              [class.is-invalid]="this.registerForm.password().invalid() && this.registerForm.password().touched()"
+              class="form-control"
+            />
+            @if (this.registerForm.password().invalid() && this.registerForm.password().touched()) {
+              @for (error of this.registerForm.password().errors(); track error.kind) {
+                <div class="invalid-feedback">{{ error.message ?? error.kind }}</div>
+              }
+            }
+          </div>
+          <div class="required form-group">
+            <p>Confirm Password *</p>
+            <input
+              type="password"
+              [formField]="this.registerForm.confirmPassword"
+              [class.is-invalid]="this.registerForm.confirmPassword().invalid() && this.registerForm.confirmPassword().touched()"
+              class="form-control"
+            />
+            @if (this.registerForm.confirmPassword().invalid() && this.registerForm.confirmPassword().touched()) {
+              @for (error of this.registerForm.confirmPassword().errors(); track error.kind) {
+                <div class="invalid-feedback">{{ error.message ?? error.kind }}</div>
+              }
+            }
+          </div>
+          <input type="button"
+            [disabled]="this.authStore.isLoading()"
+            name="login"
+            class="btn btn-third-col submit"
+            value="REGISTER"
+            (click)="this.onRegisterSubmit()"/>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

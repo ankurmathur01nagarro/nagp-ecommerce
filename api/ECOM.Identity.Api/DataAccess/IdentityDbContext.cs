@@ -1,21 +1,29 @@
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace ECOM.Identity.Api.DataAccess;
 
-/// <summary>
-/// OpenIddict needs its own tables (OpenIddictApplications,
-/// OpenIddictAuthorizations, OpenIddictScopes, OpenIddictTokens).
-/// You wire this into a DbContext
-/// </summary>
-/// <param name="options"></param>
 public class IdentityDbContext(DbContextOptions<IdentityDbContext> options)
-    : DbContext(options)
+    : IdentityDbContext<ApplicationUser, IdentityRole<int>, int>(options)
 {
-    public DbSet<Users> Users { get; set; }
-
     protected override void OnModelCreating(ModelBuilder builder)
     {
-        base.OnModelCreating(builder);
-        builder.UseOpenIddict(); // registers the 4 OpenIddict entity sets
+        base.OnModelCreating(builder); // must come first — sets up all Identity table mappings
+
+        // Keep existing table name; Identity defaults to "AspNetUsers"
+        builder.Entity<ApplicationUser>().ToTable("Users");
+
+        // EF migration will rename the existing "Username" column to "UserName"
+        // to match the standard Identity convention
+
+        builder.Entity<IdentityRole<int>>().ToTable("UserRoles");
+        builder.Entity<IdentityUserRole<int>>().ToTable("UserRoleMappings");
+        builder.Entity<IdentityUserClaim<int>>().ToTable("UserClaims");
+        builder.Entity<IdentityUserLogin<int>>().ToTable("AspNetUserLogins");
+        builder.Entity<IdentityUserToken<int>>().ToTable("AspNetUserTokens");
+        builder.Entity<IdentityRoleClaim<int>>().ToTable("RoleClaimMappings");
+
+        builder.UseOpenIddict();
     }
 }

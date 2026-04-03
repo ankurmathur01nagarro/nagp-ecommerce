@@ -95,6 +95,27 @@ try {
     $GrafanaAdminPassword = Get-GrafanaPassword
     $NewRelicApiKey = Get-NewRelicApiKey
     $InstallDemocraticCsi = Get-DemocraticCsiOption
+    $DemocraticCsiConfig = $null
+    if ($InstallDemocraticCsi) {
+        Write-SpectreHost "[yellow]TrueNAS Configuration for democratic-csi[/]"
+        Write-SpectreHost ""
+
+        $truenasIp = Read-SpectreText -Prompt "Enter TrueNAS IP address"
+        $truenasApiKey = Read-SpectreText -Prompt "Enter TrueNAS API key" -Secret
+        $truenasNetworkCidr = Read-SpectreText -Prompt "Enter allowed network CIDR (e.g. 192.168.1.0/24)"
+        $nfsDatasetParent = Read-SpectreText -Prompt "Enter NFS ZFS dataset parent (e.g. main/k3s/nfs)"
+        $iscsiDatasetParent = Read-SpectreText -Prompt "Enter iSCSI ZFS dataset parent (e.g. main/k3s/iscsi)"
+
+        Write-SpectreHost ""
+
+        $DemocraticCsiConfig = @{
+            TrueNasIp          = $truenasIp
+            TrueNasApiKey       = $truenasApiKey
+            TrueNasNetworkCidr  = $truenasNetworkCidr
+            NfsDatasetParent    = $nfsDatasetParent
+            IscsiDatasetParent  = $iscsiDatasetParent
+        }
+    }
     Show-ConfigurationSummary -ArgoCDPassword $ArgoCDAdminPassword -GrafanaPassword $GrafanaAdminPassword -NewRelicApiKey $NewRelicApiKey -InstallDemocraticCsi $InstallDemocraticCsi
 
     $proceed = Confirm-Setup
@@ -250,6 +271,29 @@ Show-SectionHeader "kubectl port-forward service/argocd-server -n argocd 8080:44
 # Install democratic-csi storage driver (conditional)
 if ($InstallDemocraticCsi) {
     Show-SectionHeader "Install democratic-csi Storage Driver (TrueNAS)"
+
+    $ctx.ExecuteStep("Generating democratic-csi config files", {
+        $overlayPath = Join-Path (Get-Location) "..\scripts\democratic-csi\overlays\local-truenas"
+        
+        $replacements = @{
+            '{TRUENAS_IP}'           = $DemocraticCsiConfig.TrueNasIp
+            '{TRUENAS_API_KEY}'      = $DemocraticCsiConfig.TrueNasApiKey
+            '{TRUENAS_NETWORK_CIDR}' = $DemocraticCsiConfig.TrueNasNetworkCidr
+            '{NFS_DATASET_PARENT}'   = $DemocraticCsiConfig.NfsDatasetParent
+            '{ISCSI_DATASET_PARENT}' = $DemocraticCsiConfig.IscsiDatasetParent
+        }
+
+        foreach ($tplFile in Get-ChildItem -Path $overlayPath -Filter "*.yaml.tpl") {
+            $outputFile = $tplFile.FullName -replace '\.tpl$', ''
+            $content = Get-Content -Path $tplFile.FullName -Raw
+            foreach ($key in $replacements.Keys) {
+                $content = $content.Replace($key, $replacements[$key])
+            }
+            Set-Content -Path $outputFile -Value $content -NoNewline
+            Show-Success "Generated $(Split-Path $outputFile -Leaf)"
+        }
+    })
+
     $ctx.ExecuteStep("Installing democratic-csi", {
         kustomize build ..\scripts\democratic-csi\overlays\local-truenas\ --enable-helm | kubectl apply -f -
         $ctx.AutoTrack("KubernetesResource", "democratic-csi")

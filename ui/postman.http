@@ -1,13 +1,3 @@
-POST http://localhost:5170/api/auth/login
-Content-Type: application/json
-
-{
-    "username": "admin",
-    "password": "Admin@123"
-}
-
-###
-
 POST http://localhost:5001/api/auth/login
 Content-Type: application/json
 

@@ -36,12 +36,12 @@ public class ClientSeeder(IServiceProvider serviceProvider) : IHostedService
     {
         var manager = services.GetRequiredService<IOpenIddictApplicationManager>();
         var config = services.GetRequiredService<IConfiguration>();
-        
+
         var clientId = config[$"OpenIddict:Clients:{clientName}:ClientId"]
             ?? throw new InvalidOperationException($"OpenIddict:Clients:{clientName}:ClientId is not configured.");
         var clientSecret = config[$"OpenIddict:Clients:{clientName}:ClientSecret"]
             ?? throw new InvalidOperationException($"OpenIddict:Clients:{clientName}:ClientSecret is not configured.");
-        
+
         var descriptor = new OpenIddictApplicationDescriptor
         {
             ClientId = clientId,
@@ -64,26 +64,25 @@ public class ClientSeeder(IServiceProvider serviceProvider) : IHostedService
             await manager.UpdateAsync(existing, descriptor, ct);
     }
 
-    private static async Task SeedUsersAsync(IServiceProvider services, CancellationToken ct)
+    private static async Task SeedUsersAsync(IServiceProvider services, CancellationToken _)
     {
-        var dbContext = services.GetRequiredService<IdentityDbContext>();
-        var passwordHasher = services.GetRequiredService<IPasswordHasher<Users>>();
+        var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
 
-        if (!await dbContext.Users.AnyAsync(ct))
+        if (await userManager.FindByNameAsync("admin") is null)
         {
-            var admin = new Users
+            var admin = new ApplicationUser
             {
-                Username = "admin",
+                UserName = "admin",
                 Email = "admin@ecom.local",
                 Role = "Admin",
                 CreatedAt = DateTimeOffset.UtcNow,
-                UpdatedAt = DateTimeOffset.UtcNow,
-                PasswordHash = string.Empty
+                UpdatedAt = DateTimeOffset.UtcNow
             };
-            admin.PasswordHash = passwordHasher.HashPassword(admin, "Admin@123");
 
-            dbContext.Users.Add(admin);
-            await dbContext.SaveChangesAsync(ct);
+            var result = await userManager.CreateAsync(admin, "Admin@123");
+            if (!result.Succeeded)
+                throw new InvalidOperationException(
+                    $"Failed to seed admin user: {string.Join(", ", result.Errors.Select(e => e.Description))}");
         }
     }
 }

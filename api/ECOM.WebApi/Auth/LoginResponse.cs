@@ -1,3 +1,6 @@
 namespace ECOM.WebApi.Auth;
 
-public record LoginResponse(string Username, DateTimeOffset ExpiresAt);
+public record LoginResponse(
+    string Username,
+    DateTimeOffset ExpiresAt,
+    string token);

@@ -1,15 +1,15 @@
 using ECOM.WebApi.Auth;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using OpenIddict.Validation.AspNetCore;
 
 namespace ECOM.WebApi.Controllers;
 
 [ApiController]
 [Route("api/auth")]
-public class AuthController(ITokenService tokenService) : ControllerBase
+public class AuthController(IIdentityService tokenService) : ControllerBase
 {
-    private const string CookieName = "ecom_auth";
-
     [HttpPost("login")]
     [EnableRateLimiting("login")]
     public async Task<ActionResult<LoginResponse>> Login(
@@ -22,29 +22,31 @@ public class AuthController(ITokenService tokenService) : ControllerBase
 
         var expiresAt = DateTimeOffset.UtcNow.AddSeconds(result.ExpiresIn);
 
-        Response.Cookies.Append(CookieName, result.AccessToken!, new CookieOptions
-        {
-            HttpOnly = true,          // not accessible from JS
-            Secure = true,            // HTTPS only
-            SameSite = SameSiteMode.Strict,
-            Expires = expiresAt,
-            Path = "/"
-        });
-
-        return Ok(new LoginResponse(request.Username, expiresAt));
+        return Ok(new LoginResponse(request.Username, expiresAt, result.AccessToken!));
     }
 
-    [HttpPost("logout")]
-    public IActionResult Logout()
+    [HttpPost("register")]
+    [EnableRateLimiting("login")]
+    public async Task<IActionResult> Register(
+        [FromBody] RegisterRequest request, CancellationToken ct)
     {
-        Response.Cookies.Delete(CookieName, new CookieOptions
-        {
-            HttpOnly = true,
-            Secure = true,
-            SameSite = SameSiteMode.Strict,
-            Path = "/"
-        });
+        var result = await tokenService.RegisterAsync(request, ct);
 
-        return NoContent();
+        if (!result.Success)
+            return Conflict(new { error = result.Error });
+
+        return StatusCode(StatusCodes.Status201Created, new { request.Username, request.Email });
+    }
+
+    [HttpGet("me")]
+    [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+    public async Task<IActionResult> Me(CancellationToken ct)
+    {
+        var result = await tokenService.GetUserInfoAsync(ct);
+
+        if (!result.Success)
+            return Unauthorized(new { error = result.Error });
+
+        return Ok(result.UserInfo);
     }
 }
