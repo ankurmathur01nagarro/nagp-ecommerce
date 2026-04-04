@@ -1,6 +1,7 @@
 import { Component, effect, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthStore } from '@app/store/auth.store';
+import { environment } from '@env/environment';
 import { email, form, FormField, pattern, required, validate } from '@angular/forms/signals';
 
 type LoginData = {
@@ -71,6 +72,10 @@ export class LoginOrRegisterComponent {
         this.authStore.clearRegisterSuccess();
       }
     });
+  }
+
+  loginWithGoogle() {
+    window.location.href = `${environment.webApiBaseUrl}/api/auth/external/challenge`;
   }
 
   onLoginSubmit() {

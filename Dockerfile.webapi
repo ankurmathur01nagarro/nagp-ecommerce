@@ -1,0 +1,28 @@
+# ── Stage 1: build Angular ────────────────────────────────────────────────────
+FROM node:24-alpine3.23 AS ng-build
+WORKDIR /ui
+COPY ui/package*.json ./
+RUN npm ci --prefer-offline
+COPY ui/ ./
+RUN npm run build
+# Output lands in /ui/dist/browser
+
+# ── Stage 2: publish .NET WebApi ─────────────────────────────────────────────
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS dotnet-build
+WORKDIR /src
+COPY api/ ./
+RUN dotnet restore ./ECOM.WebApi/ECOM.WebApi.csproj
+RUN dotnet publish ./ECOM.WebApi/ECOM.WebApi.csproj -c Release -o /app/out
+
+# ── Stage 3: final runtime image ─────────────────────────────────────────────
+FROM mcr.microsoft.com/dotnet/aspnet:10.0
+WORKDIR /app
+
+COPY --from=dotnet-build /app/out ./
+
+# Angular static files served from wwwroot by UseStaticFiles + SPA fallback
+COPY --from=ng-build /ui/dist/browser ./wwwroot
+
+EXPOSE 8080
+
+ENTRYPOINT ["dotnet", "ECOM.WebApi.dll"]

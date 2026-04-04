@@ -5,11 +5,16 @@ import { HomeComponent } from './components/Home/home-component';
 import { CatalogComponent } from './components/catalog-component/catalog-component';
 import { WelcomePageComponent } from './components/welcome-page-component/welcome-page-component';
 import { FooterComponent } from './components/footer-component/footer-component';
+import { AuthorizationHandlerComponent } from './components/authorization-handler/authorization-handler';
 
 export const routes: Routes = [
   {
     path: 'notloggedin',
     component: LoginOrRegisterComponent
+  },
+  {
+    path: 'auth/callback',
+    component: AuthorizationHandlerComponent
   },
   {
     path: '',

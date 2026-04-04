@@ -1,6 +1,7 @@
 using System.Threading.RateLimiting;
 using ECOM.WebApi.Auth;
 using ECOM.WebApi.Data;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using OpenIddict.Validation.AspNetCore;
 using Scalar.AspNetCore;
@@ -28,6 +29,8 @@ if (corsEnabled)
 builder.Services.AddOpenApi();
 builder.Services.AddControllers();
 builder.RegisterDatabaseServices();
+builder.Services.Configure<ExternalAuthOptions>(
+    builder.Configuration.GetSection(ExternalAuthOptions.Section));
 
 builder.Services.AddHeaderPropagation(options => options.Headers.Add("Authorization"));
 
@@ -51,6 +54,23 @@ builder.Services.AddOpenIddict()
 builder.Services.AddAuthentication(OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme);
 builder.Services.AddAuthorization();
 
+// YARP — proxies the two browser-facing Identity API paths so the browser never needs to
+// reach the Identity API directly. No ingress rule changes required.
+builder.Services.AddReverseProxy()
+    .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
+
+// Trust X-Forwarded-* headers from the ingress controller so Request.Host / Scheme
+// reflect the public-facing hostname rather than the internal pod address.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor
+                               | ForwardedHeaders.XForwardedHost
+                               | ForwardedHeaders.XForwardedProto;
+    // Clear the default whitelist — all pod-to-pod traffic inside the cluster is trusted.
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
 // Brute-force protection on the login endpoint: max 10 attempts per IP per minute
 builder.Services.AddRateLimiter(options =>
 {
@@ -65,6 +85,9 @@ builder.Services.AddRateLimiter(options =>
 });
 
 var app = builder.Build();
+
+// Must be first so every subsequent middleware sees the correct public scheme/host.
+app.UseForwardedHeaders();
 
 if (corsEnabled) app.UseCors();
 app.MapOpenApi();
@@ -90,5 +113,13 @@ app.UseHeaderPropagation();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapReverseProxy();
+
+// Serve Angular static files (wwwroot populated by the unified Dockerfile).
+// UseStaticFiles handles hashed asset files (JS/CSS) with far-future cache headers;
+// the SPA fallback serves index.html for any path not matched by an API route above,
+// enabling Angular's client-side router to handle deep-links.
+app.UseStaticFiles();
+app.MapFallbackToFile("index.html");
 
 app.Run();

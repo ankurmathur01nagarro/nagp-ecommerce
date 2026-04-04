@@ -34,16 +34,18 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_HTTP_PORTS: "8080"
       ConnectionStrings__Default: "Host=postgres;Port=5432;Database=ecomdb;Username=postgres;Password=password"
+      ExternalAuth__Google__CallbackUri: "http://localhost:5001/api/auth/google/callback"
+      ExternalAuth__PostCallbackBaseUrl: "http://localhost:5001"
     ports:
-      - "5224:8080"
+      - "5000:8080"
     depends_on:
       migration:
         condition: service_completed_successfully
 
   api:
     build:
-      context: .
-      dockerfile: Dockerfile.api
+      context: ..
+      dockerfile: Dockerfile.webapi
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_HTTP_PORTS: "8080"
@@ -52,8 +54,9 @@ services:
       IdentityApi__BaseUrl: "http://identity-api:8080"
       IdentityApi__ClientId: "ecom-api"
       IdentityApi__ClientSecret: "your-secret-here"
+      ReverseProxy__Clusters__identity__Destinations__primary__Address: "http://identity-api:8080"
     ports:
-      - "5170:8080"
+      - "5001:8080"
     depends_on:
       migration:
         condition: service_completed_successfully

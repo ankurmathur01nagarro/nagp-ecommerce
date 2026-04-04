@@ -7,7 +7,15 @@
       "WebFetch(domain:github.com)",
       "WebFetch(domain:netbasal.medium.com)",
       "WebFetch(domain:angular.love)",
-      "Bash(npx ng:*)"
+      "Bash(npx ng:*)",
+      "Read(//c/nagp-casestudy/src/api/ECOM.WebApi/**)",
+      "Read(//c/nagp-casestudy/src/api/ECOM.Identity.Api/Infrastructure/Workers/**)",
+      "Read(//c/nagp-casestudy/src/api/ECOM.Identity.Api/Infrastructure/**)",
+      "Read(//c/nagp-casestudy/src/api/ECOM.Identity.Api/**)"
+    ],
+    "additionalDirectories": [
+      "c:\\nagp-casestudy\\src\\api\\ECOM.WebApi\\Auth",
+      "c:\\nagp-casestudy\\src\\api\\ECOM.WebApi"
     ]
   }
 }

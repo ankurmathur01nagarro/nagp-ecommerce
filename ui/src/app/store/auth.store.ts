@@ -73,6 +73,10 @@ export const AuthStore = signalStore(
     clearRegisterSuccess(): void {
       patchState(store, { registerSuccess: false });
     },
+
+    setUserFromExternal(user: TokenResponse): void {
+      patchState(store, { user });
+    },
   })),
 
   withHooks((store) => ({

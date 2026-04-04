@@ -42,17 +42,23 @@ public class ClientSeeder(IServiceProvider serviceProvider) : IHostedService
         var clientSecret = config[$"OpenIddict:Clients:{clientName}:ClientSecret"]
             ?? throw new InvalidOperationException($"OpenIddict:Clients:{clientName}:ClientSecret is not configured.");
 
+        var redirectUri = config["ExternalAuth:PostCallbackBaseUrl"]!.TrimEnd('/') + "/api/auth/external/complete";
+
         var descriptor = new OpenIddictApplicationDescriptor
         {
             ClientId = clientId,
             ClientType = ClientTypes.Confidential,
             ClientSecret = clientSecret,
             DisplayName = clientDisplayName,
+            RedirectUris = { new Uri(redirectUri) },
             Permissions =
             {
                 Permissions.Endpoints.Token,
+                Permissions.Endpoints.Authorization,
                 Permissions.GrantTypes.ClientCredentials,
                 Permissions.GrantTypes.Password,
+                Permissions.GrantTypes.AuthorizationCode,
+                Permissions.ResponseTypes.Code,
                 Permissions.Prefixes.Scope + "api"
             }
         };

@@ -1,4 +1,5 @@
 import { Component, input } from '@angular/core';
+import type { IconName } from '@app/models/icon-name';
 
 @Component({
   selector: 'li[appDropdownMenu]',
@@ -8,7 +9,7 @@ import { Component, input } from '@angular/core';
   },
 })
 export class DropdownMenuButtonComponent {
-  readonly icon = input.required<string>();
+  readonly icon = input.required<IconName>();
   readonly label = input<string>();
   readonly heading = input<string>();
   readonly hideLabelOn = input<string>('hidden-sm hidden-xs');

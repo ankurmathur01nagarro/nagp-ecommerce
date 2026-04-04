@@ -1,0 +1,481 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="1820" viewBox="0 0 1500 1820" font-family="'Segoe UI',system-ui,-apple-system,sans-serif">
+  <defs>
+    <!-- Background dot grid -->
+    <pattern id="dots" width="24" height="24" patternUnits="userSpaceOnUse">
+      <circle cx="12" cy="12" r="0.7" fill="#1e2d3d"/>
+    </pattern>
+
+    <!-- Background gradient -->
+    <linearGradient id="bg-grad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#050d1a"/>
+      <stop offset="100%" stop-color="#091525"/>
+    </linearGradient>
+
+    <!-- Title bar underlay -->
+    <linearGradient id="title-grad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stop-color="#1e3a5f" stop-opacity="0"/>
+      <stop offset="20%"  stop-color="#1e3a5f" stop-opacity="0.35"/>
+      <stop offset="50%"  stop-color="#1e3a5f" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#1e3a5f" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Section band gradients (left-to-right fade) -->
+    <linearGradient id="band-reg" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stop-color="#022c22" stop-opacity="0.88"/>
+      <stop offset="65%"  stop-color="#022c22" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#022c22" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="band-pwd" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stop-color="#0c1d4e" stop-opacity="0.88"/>
+      <stop offset="65%"  stop-color="#0c1d4e" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#0c1d4e" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="band-oauth" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stop-color="#1e0840" stop-opacity="0.88"/>
+      <stop offset="65%"  stop-color="#1e0840" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#1e0840" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="band-auth" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stop-color="#3d1500" stop-opacity="0.88"/>
+      <stop offset="65%"  stop-color="#3d1500" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#3d1500" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Actor box gradients -->
+    <linearGradient id="g-spa" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#be185d"/>
+      <stop offset="100%" stop-color="#831843"/>
+    </linearGradient>
+    <linearGradient id="g-web" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0369a1"/>
+      <stop offset="100%" stop-color="#075985"/>
+    </linearGradient>
+    <linearGradient id="g-id" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#7e22ce"/>
+      <stop offset="100%" stop-color="#581c87"/>
+    </linearGradient>
+    <linearGradient id="g-db" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1d4ed8"/>
+      <stop offset="100%" stop-color="#1e3a8a"/>
+    </linearGradient>
+    <linearGradient id="g-goog" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#dc2626"/>
+      <stop offset="100%" stop-color="#991b1b"/>
+    </linearGradient>
+
+    <!-- Filters -->
+    <filter id="actor-glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="5"  flood-color="#fff" flood-opacity="0.06"/>
+      <feDropShadow dx="0" dy="4" stdDeviation="10" flood-color="#000" flood-opacity="0.7"/>
+    </filter>
+    <filter id="title-glow">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <!-- Arrow markers — one per section colour, orient=auto handles L/R direction -->
+    <marker id="arr-reg"   markerWidth="8" markerHeight="7" refX="7" refY="3.5" orient="auto" markerUnits="userSpaceOnUse">
+      <polygon points="0 0,8 3.5,0 7" fill="#10b981"/>
+    </marker>
+    <marker id="arr-pwd"   markerWidth="8" markerHeight="7" refX="7" refY="3.5" orient="auto" markerUnits="userSpaceOnUse">
+      <polygon points="0 0,8 3.5,0 7" fill="#60a5fa"/>
+    </marker>
+    <marker id="arr-oauth" markerWidth="8" markerHeight="7" refX="7" refY="3.5" orient="auto" markerUnits="userSpaceOnUse">
+      <polygon points="0 0,8 3.5,0 7" fill="#c084fc"/>
+    </marker>
+    <marker id="arr-auth"  markerWidth="8" markerHeight="7" refX="7" refY="3.5" orient="auto" markerUnits="userSpaceOnUse">
+      <polygon points="0 0,8 3.5,0 7" fill="#fbbf24"/>
+    </marker>
+  </defs>
+
+  <!-- ═══════════════════ BACKGROUND ═══════════════════ -->
+  <rect width="1500" height="1820" fill="url(#bg-grad)"/>
+  <rect width="1500" height="1820" fill="url(#dots)"/>
+
+  <!-- ═══════════════════ TITLE ═══════════════════ -->
+  <rect x="0" y="10" width="1500" height="52" fill="url(#title-grad)"/>
+  <text x="750" y="38" text-anchor="middle" font-size="21" font-weight="700" fill="#f8fafc" letter-spacing="0.4" filter="url(#title-glow)">ECOM Auth Service — Complete User Flow</text>
+  <text x="750" y="56" text-anchor="middle" font-size="10.5" fill="#475569" letter-spacing="1.8">REGISTER  ·  PASSWORD LOGIN  ·  GOOGLE OAUTH (OPENIDDICT MIMBAN)  ·  AUTHENTICATED REQUESTS</text>
+
+  <!-- Legend -->
+  <line x1="1148" y1="32" x2="1182" y2="32" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arr-pwd)"/>
+  <text x="1192" y="36" font-size="9" fill="#94a3b8">Request</text>
+  <line x1="1255" y1="32" x2="1289" y2="32" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#arr-pwd)"/>
+  <text x="1299" y="36" font-size="9" fill="#94a3b8">Response</text>
+  <rect x="1368" y="25" width="13" height="13" rx="3" fill="#1e0840" fill-opacity="0.6" stroke="#9333ea" stroke-width="0.8" stroke-opacity="0.6"/>
+  <text x="1388" y="36" font-size="9" fill="#94a3b8">Processing</text>
+
+  <!-- ═══════════════════ SECTION BANDS ═══════════════════ -->
+  <!-- Register   y=148 h=225 -->
+  <rect x="0" y="148" width="1500" height="225" fill="url(#band-reg)"/>
+  <!-- Password   y=380 h=222 -->
+  <rect x="0" y="380" width="1500" height="222" fill="url(#band-pwd)"/>
+  <!-- Google OAuth y=609 h=966 -->
+  <rect x="0" y="609" width="1500" height="966" fill="url(#band-oauth)"/>
+  <!-- Auth Request y=1582 h=198 -->
+  <rect x="0" y="1582" width="1500" height="198" fill="url(#band-auth)"/>
+
+  <!-- Left accent bars -->
+  <rect x="0" y="148" width="5" height="225" fill="#10b981"/>
+  <rect x="0" y="380" width="5" height="222" fill="#3b82f6"/>
+  <rect x="0" y="609" width="5" height="966" fill="#a855f7"/>
+  <rect x="0" y="1582" width="5" height="198" fill="#f59e0b"/>
+
+  <!-- Section divider lines -->
+  <line x1="0" y1="148"  x2="1500" y2="148"  stroke="#0f2744" stroke-width="1.5"/>
+  <line x1="0" y1="380"  x2="1500" y2="380"  stroke="#0f2744" stroke-width="1.5"/>
+  <line x1="0" y1="609"  x2="1500" y2="609"  stroke="#0f2744" stroke-width="1.5"/>
+  <line x1="0" y1="1575" x2="1500" y2="1575" stroke="#0f2744" stroke-width="1.5"/>
+  <line x1="0" y1="1780" x2="1500" y2="1780" stroke="#0f2744" stroke-width="1.5"/>
+
+  <!-- Section label pills -->
+  <rect x="10" y="152" width="82"  height="17" rx="8" fill="#10b981" fill-opacity="0.14" stroke="#10b981" stroke-width="1" stroke-opacity="0.55"/>
+  <text x="51"  y="164" text-anchor="middle" font-size="8.5" font-weight="700" fill="#10b981" letter-spacing="1">REGISTER</text>
+
+  <rect x="10" y="384" width="109" height="17" rx="8" fill="#3b82f6" fill-opacity="0.14" stroke="#3b82f6" stroke-width="1" stroke-opacity="0.55"/>
+  <text x="64"  y="396" text-anchor="middle" font-size="8.5" font-weight="700" fill="#3b82f6" letter-spacing="1">PASSWORD LOGIN</text>
+
+  <rect x="10" y="613" width="118" height="17" rx="8" fill="#a855f7" fill-opacity="0.14" stroke="#a855f7" stroke-width="1" stroke-opacity="0.55"/>
+  <text x="69"  y="625" text-anchor="middle" font-size="8.5" font-weight="700" fill="#a855f7" letter-spacing="1">GOOGLE OAUTH</text>
+
+  <rect x="10" y="1586" width="115" height="17" rx="8" fill="#f59e0b" fill-opacity="0.14" stroke="#f59e0b" stroke-width="1" stroke-opacity="0.55"/>
+  <text x="67"  y="1598" text-anchor="middle" font-size="8.5" font-weight="700" fill="#f59e0b" letter-spacing="1">AUTH REQUEST</text>
+
+  <!-- ═══════════════════ LIFELINES ═══════════════════ -->
+  <!-- Columns: cx_spa=155  cx_web=415  cx_id=740  cx_db=1060  cx_goog=1360 -->
+
+  <!-- Glow halos -->
+  <line x1="155"  y1="140" x2="155"  y2="1782" stroke="#be185d" stroke-width="6" stroke-opacity="0.07"/>
+  <line x1="415"  y1="140" x2="415"  y2="1782" stroke="#0369a1" stroke-width="6" stroke-opacity="0.07"/>
+  <line x1="740"  y1="140" x2="740"  y2="1782" stroke="#7e22ce" stroke-width="6" stroke-opacity="0.07"/>
+  <line x1="1060" y1="140" x2="1060" y2="1782" stroke="#1d4ed8" stroke-width="6" stroke-opacity="0.07"/>
+  <line x1="1360" y1="140" x2="1360" y2="1782" stroke="#dc2626" stroke-width="6" stroke-opacity="0.07"/>
+
+  <!-- Dashed lifelines -->
+  <line x1="155"  y1="140" x2="155"  y2="1782" stroke="#be185d" stroke-width="1" stroke-opacity="0.3" stroke-dasharray="6 4"/>
+  <line x1="415"  y1="140" x2="415"  y2="1782" stroke="#0369a1" stroke-width="1" stroke-opacity="0.3" stroke-dasharray="6 4"/>
+  <line x1="740"  y1="140" x2="740"  y2="1782" stroke="#7e22ce" stroke-width="1" stroke-opacity="0.3" stroke-dasharray="6 4"/>
+  <line x1="1060" y1="140" x2="1060" y2="1782" stroke="#1d4ed8" stroke-width="1" stroke-opacity="0.3" stroke-dasharray="6 4"/>
+  <line x1="1360" y1="140" x2="1360" y2="1782" stroke="#dc2626" stroke-width="1" stroke-opacity="0.3" stroke-dasharray="6 4"/>
+
+  <!-- Lifeline-start dots -->
+  <circle cx="155"  cy="140" r="3.5" fill="#be185d" opacity="0.65"/>
+  <circle cx="415"  cy="140" r="3.5" fill="#0369a1" opacity="0.65"/>
+  <circle cx="740"  cy="140" r="3.5" fill="#7e22ce" opacity="0.65"/>
+  <circle cx="1060" cy="140" r="3.5" fill="#1d4ed8" opacity="0.65"/>
+  <circle cx="1360" cy="140" r="3.5" fill="#dc2626" opacity="0.65"/>
+
+  <!-- ═══════════════════ ACTOR BOXES ═══════════════════ -->
+
+  <!-- Angular SPA  cx=155 -->
+  <rect x="72"   y="65" width="166" height="68" rx="10" fill="url(#g-spa)" filter="url(#actor-glow)"/>
+  <rect x="72"   y="65" width="166" height="68" rx="10" fill="none" stroke="#f43f5e" stroke-width="0.8" stroke-opacity="0.5"/>
+  <text x="155"  y="94"  text-anchor="middle" font-size="22" fill="rgba(255,255,255,0.88)">◈</text>
+  <text x="155"  y="122" text-anchor="middle" font-size="11" font-weight="700" fill="#ffe4e6" letter-spacing="0.3">Angular SPA</text>
+
+  <!-- ECOM.WebApi  cx=415 -->
+  <rect x="332"  y="65" width="166" height="68" rx="10" fill="url(#g-web)" filter="url(#actor-glow)"/>
+  <rect x="332"  y="65" width="166" height="68" rx="10" fill="none" stroke="#38bdf8" stroke-width="0.8" stroke-opacity="0.5"/>
+  <text x="415"  y="94"  text-anchor="middle" font-size="22" fill="rgba(255,255,255,0.88)">◈</text>
+  <text x="415"  y="122" text-anchor="middle" font-size="11" font-weight="700" fill="#e0f2fe" letter-spacing="0.3">ECOM.WebApi</text>
+
+  <!-- ECOM.Identity.Api  cx=740 -->
+  <rect x="657"  y="65" width="166" height="68" rx="10" fill="url(#g-id)" filter="url(#actor-glow)"/>
+  <rect x="657"  y="65" width="166" height="68" rx="10" fill="none" stroke="#c084fc" stroke-width="0.8" stroke-opacity="0.5"/>
+  <text x="740"  y="94"  text-anchor="middle" font-size="22" fill="rgba(255,255,255,0.88)">◈</text>
+  <text x="740"  y="122" text-anchor="middle" font-size="11" font-weight="700" fill="#f3e8ff" letter-spacing="0.3">ECOM.Identity.Api</text>
+
+  <!-- PostgreSQL  cx=1060 -->
+  <rect x="977"  y="65" width="166" height="68" rx="10" fill="url(#g-db)" filter="url(#actor-glow)"/>
+  <rect x="977"  y="65" width="166" height="68" rx="10" fill="none" stroke="#60a5fa" stroke-width="0.8" stroke-opacity="0.5"/>
+  <text x="1060" y="94"  text-anchor="middle" font-size="22" fill="rgba(255,255,255,0.88)">◈</text>
+  <text x="1060" y="122" text-anchor="middle" font-size="11" font-weight="700" fill="#dbeafe" letter-spacing="0.3">PostgreSQL</text>
+
+  <!-- Google OAuth  cx=1360 -->
+  <rect x="1277" y="65" width="166" height="68" rx="10" fill="url(#g-goog)" filter="url(#actor-glow)"/>
+  <rect x="1277" y="65" width="166" height="68" rx="10" fill="none" stroke="#fca5a5" stroke-width="0.8" stroke-opacity="0.5"/>
+  <text x="1360" y="94"  text-anchor="middle" font-size="22" fill="rgba(255,255,255,0.88)">◈</text>
+  <text x="1360" y="122" text-anchor="middle" font-size="11" font-weight="700" fill="#fee2e2" letter-spacing="0.3">Google OAuth</text>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!--  REGISTER FLOW                                             -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+
+  <!-- R1  SPA → WebApi -->
+  <line x1="155" y1="198" x2="415" y2="198" stroke="#10b981" stroke-width="1.5" marker-end="url(#arr-reg)"/>
+  <text x="285" y="191" text-anchor="middle" font-size="10" fill="#6ee7b7">POST /api/auth/register</text>
+  <text x="285" y="208" text-anchor="middle" font-size="9" fill="#34d399" opacity="0.8">{username, email, password, mobileNumber}</text>
+
+  <!-- R2  WebApi → Identity -->
+  <line x1="415" y1="230" x2="740" y2="230" stroke="#10b981" stroke-width="1.5" marker-end="url(#arr-reg)"/>
+  <text x="577" y="223" text-anchor="middle" font-size="10" fill="#6ee7b7">POST /api/register</text>
+  <text x="577" y="240" text-anchor="middle" font-size="9" fill="#34d399" opacity="0.8">{username, email, password, mobileNumber}</text>
+
+  <!-- R3  Identity → DB -->
+  <line x1="740" y1="262" x2="1060" y2="262" stroke="#10b981" stroke-width="1.5" marker-end="url(#arr-reg)"/>
+  <text x="900" y="255" text-anchor="middle" font-size="10" fill="#6ee7b7">UserManager.CreateAsync()</text>
+  <text x="900" y="272" text-anchor="middle" font-size="9" fill="#34d399" opacity="0.8">INSERT INTO AspNetUsers</text>
+
+  <!-- R4  DB → Identity (return) -->
+  <line x1="1060" y1="290" x2="740" y2="290" stroke="#10b981" stroke-width="1.2" stroke-dasharray="5 3" marker-end="url(#arr-reg)"/>
+  <text x="900" y="286" text-anchor="middle" font-size="9" fill="#34d399">OK</text>
+
+  <!-- R5  Identity → WebApi (return) -->
+  <line x1="740" y1="311" x2="415" y2="311" stroke="#10b981" stroke-width="1.2" stroke-dasharray="5 3" marker-end="url(#arr-reg)"/>
+  <text x="577" y="307" text-anchor="middle" font-size="9" fill="#34d399">HTTP 201</text>
+
+  <!-- R6  WebApi → SPA (return) -->
+  <line x1="415" y1="335" x2="155" y2="335" stroke="#10b981" stroke-width="1.2" stroke-dasharray="5 3" marker-end="url(#arr-reg)"/>
+  <text x="285" y="331" text-anchor="middle" font-size="9" fill="#34d399">201 {username, email}</text>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!--  PASSWORD LOGIN FLOW                                       -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+
+  <!-- P1  SPA → WebApi -->
+  <line x1="155" y1="422" x2="415" y2="422" stroke="#60a5fa" stroke-width="1.5" marker-end="url(#arr-pwd)"/>
+  <text x="285" y="415" text-anchor="middle" font-size="10" fill="#93c5fd">POST /api/auth/login</text>
+  <text x="285" y="432" text-anchor="middle" font-size="9" fill="#60a5fa" opacity="0.8">{username, password}</text>
+
+  <!-- P2  WebApi → Identity -->
+  <line x1="415" y1="452" x2="740" y2="452" stroke="#60a5fa" stroke-width="1.5" marker-end="url(#arr-pwd)"/>
+  <text x="577" y="445" text-anchor="middle" font-size="10" fill="#93c5fd">POST /connect/token</text>
+  <text x="577" y="462" text-anchor="middle" font-size="9" fill="#60a5fa" opacity="0.8">grant_type=password + client_id / client_secret</text>
+
+  <!-- P3  Identity → DB -->
+  <line x1="740" y1="482" x2="1060" y2="482" stroke="#60a5fa" stroke-width="1.5" marker-end="url(#arr-pwd)"/>
+  <text x="900" y="475" text-anchor="middle" font-size="10" fill="#93c5fd">Validate credentials</text>
+  <text x="900" y="492" text-anchor="middle" font-size="9" fill="#60a5fa" opacity="0.8">AspNetUsers — verify password hash</text>
+
+  <!-- P4  DB → Identity (return) -->
+  <line x1="1060" y1="510" x2="740" y2="510" stroke="#60a5fa" stroke-width="1.2" stroke-dasharray="5 3" marker-end="url(#arr-pwd)"/>
+  <text x="900" y="506" text-anchor="middle" font-size="9" fill="#60a5fa">User found</text>
+
+  <!-- Identity: Build ClaimsPrincipal note -->
+  <rect x="640" y="517" width="200" height="21" rx="4" fill="#0c1a4e" fill-opacity="0.6" stroke="#3b82f6" stroke-width="0.7" stroke-opacity="0.6"/>
+  <text x="740" y="532" text-anchor="middle" font-size="9.5" fill="#bfdbfe">Build ClaimsPrincipal → Sign JWT</text>
+
+  <!-- P5  Identity → WebApi (return) -->
+  <line x1="740" y1="548" x2="415" y2="548" stroke="#60a5fa" stroke-width="1.2" stroke-dasharray="5 3" marker-end="url(#arr-pwd)"/>
+  <text x="577" y="544" text-anchor="middle" font-size="9" fill="#60a5fa">{access_token, expires_in}</text>
+
+  <!-- P6  WebApi → SPA (return) -->
+  <line x1="415" y1="570" x2="155" y2="570" stroke="#60a5fa" stroke-width="1.2" stroke-dasharray="5 3" marker-end="url(#arr-pwd)"/>
+  <text x="285" y="566" text-anchor="middle" font-size="9" fill="#60a5fa">200 LoginResponse {username, expiresAt, accessToken}</text>
+
+  <!-- SPA: store in localStorage note -->
+  <rect x="55" y="578" width="200" height="21" rx="4" fill="#0c1a4e" fill-opacity="0.6" stroke="#3b82f6" stroke-width="0.7" stroke-opacity="0.6"/>
+  <text x="155" y="593" text-anchor="middle" font-size="9.5" fill="#bfdbfe">Store JWT in localStorage['loginSession']</text>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!--  GOOGLE OAUTH FLOW                                         -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+
+  <!-- ── Phase 1: Initiate ── -->
+  <line x1="130" y1="623" x2="1488" y2="623" stroke="#7c3aed" stroke-width="0.5" stroke-opacity="0.3" stroke-dasharray="3 5"/>
+  <rect x="130" y="616" width="140" height="15" rx="7" fill="#3b0764" fill-opacity="0.75"/>
+  <text x="200" y="627" text-anchor="middle" font-size="8" font-weight="700" fill="#c084fc" letter-spacing="0.9">PHASE 1 — INITIATE</text>
+
+  <!-- G1  SPA → WebApi -->
+  <line x1="155" y1="652" x2="415" y2="652" stroke="#c084fc" stroke-width="1.5" marker-end="url(#arr-oauth)"/>
+  <text x="285" y="645" text-anchor="middle" font-size="10" fill="#d8b4fe">GET /api/auth/external/challenge</text>
+  <text x="285" y="662" text-anchor="middle" font-size="9" fill="#c084fc" opacity="0.8">?postLoginPath=/dashboard</text>
+
+  <!-- WebApi: Build authorize URL -->
+  <rect x="315" y="670" width="200" height="21" rx="4" fill="#1e0840" fill-opacity="0.6" stroke="#9333ea" stroke-width="0.7" stroke-opacity="0.6"/>
+  <text x="415" y="685" text-anchor="middle" font-size="9.5" fill="#e9d5ff">Build /connect/authorize URL + params</text>
+
+  <!-- G2  WebApi → SPA (return 302) -->
+  <line x1="415" y1="702" x2="155" y2="702" stroke="#c084fc" stroke-width="1.2" stroke-dasharray="5 3" marker-end="url(#arr-oauth)"/>
+  <text x="285" y="698" text-anchor="middle" font-size="9" fill="#c084fc">302 → Identity /connect/authorize?client_id=...&amp;state=/dashboard</text>
+
+  <!-- G3  SPA → Identity: browser follows 302 -->
+  <line x1="155" y1="728" x2="740" y2="728" stroke="#c084fc" stroke-width="1.5" marker-end="url(#arr-oauth)"/>
+  <text x="447" y="721" text-anchor="middle" font-size="10" fill="#d8b4fe">GET /connect/authorize  (browser follows 302)</text>
+
+  <!-- Identity: Check cookie absent -->
+  <rect x="640" y="735" width="200" height="21" rx="4" fill="#1e0840" fill-opacity="0.6" stroke="#9333ea" stroke-width="0.7" stroke-opacity="0.6"/>
+  <text x="740" y="750" text-anchor="middle" font-size="9.5" fill="#e9d5ff">Check transient cookie → absent</text>
+
+  <!-- G4  Identity → SPA: Challenge(Google) -->
+  <line x1="740" y1="767" x2="155" y2="767" stroke="#c084fc" stroke-width="1.2" stroke-dasharray="5 3" marker-end="url(#arr-oauth)"/>
+  <text x="447" y="763" text-anchor="middle" font-size="9" fill="#c084fc">302 Challenge(Google) → Google consent screen</text>
+
+  <!-- G5  SPA → Google: navigate to consent -->
+  <line x1="155" y1="795" x2="1360" y2="795" stroke="#c084fc" stroke-width="1.5" marker-end="url(#arr-oauth)"/>
+  <text x="757" y="789" text-anchor="middle" font-size="10" fill="#d8b4fe">Browser navigates to Google consent screen</text>
+
+  <!-- G6  Google → SPA: redirect to callback -->
+  <line x1="1360" y1="820" x2="740" y2="820" stroke="#c084fc" stroke-width="1.2" stroke-dasharray="5 3" marker-end="url(#arr-oauth)"/>
+  <text x="1050" y="816" text-anchor="middle" font-size="9" fill="#c084fc">User consents → redirect to /callback/login/google?code=...</text>
+
+  <!-- ── Phase 2: User Provisioning ── -->
+  <line x1="130" y1="836" x2="1488" y2="836" stroke="#7c3aed" stroke-width="0.5" stroke-opacity="0.3" stroke-dasharray="3 5"/>
+  <rect x="130" y="829" width="179" height="15" rx="7" fill="#3b0764" fill-opacity="0.75"/>
+  <text x="219" y="840" text-anchor="middle" font-size="8" font-weight="700" fill="#c084fc" letter-spacing="0.9">PHASE 2 — USER PROVISIONING</text>
+
+  <!-- G7  SPA → Identity: callback endpoint -->
+  <line x1="155" y1="862" x2="740" y2="862" stroke="#c084fc" stroke-width="1.5" marker-end="url(#arr-oauth)"/>
+  <text x="447" y="855" text-anchor="middle" font-size="10" fill="#d8b4fe">GET /callback/login/google?code=...  (browser follows redirect)</text>
+
+  <!-- Identity: AuthenticateAsync(Google) -->
+  <rect x="640" y="870" width="200" height="21" rx="4" fill="#1e0840" fill-opacity="0.6" stroke="#9333ea" stroke-width="0.7" stroke-opacity="0.6"/>
+  <text x="740" y="885" text-anchor="middle" font-size="9.5" fill="#e9d5ff">AuthenticateAsync(Google provider)</text>
+
+  <!-- G8  Identity → Google: POST /token (internal PKCE) -->
+  <line x1="740" y1="902" x2="1360" y2="902" stroke="#c084fc" stroke-width="1.5" marker-end="url(#arr-oauth)"/>
+  <text x="1050" y="896" text-anchor="middle" font-size="10" fill="#d8b4fe">POST /token  (OpenIddict internal PKCE exchange)</text>
+
+  <!-- G9  Google → Identity: tokens -->
+  <line x1="1360" y1="925" x2="740" y2="925" stroke="#c084fc" stroke-width="1.2" stroke-dasharray="5 3" marker-end="url(#arr-oauth)"/>
+  <text x="1050" y="921" text-anchor="middle" font-size="9" fill="#c084fc">access_token + id_token</text>
+
+  <!-- Identity: Extract claims from id_token -->
+  <rect x="640" y="933" width="200" height="21" rx="4" fill="#1e0840" fill-opacity="0.6" stroke="#9333ea" stroke-width="0.7" stroke-opacity="0.6"/>
+  <text x="740" y="948" text-anchor="middle" font-size="9.5" fill="#e9d5ff">Extract sub, email, name from id_token</text>
+
+  <!-- G10  Identity → DB: FindByLoginAsync -->
+  <line x1="740" y1="965" x2="1060" y2="965" stroke="#c084fc" stroke-width="1.5" marker-end="url(#arr-oauth)"/>
+  <text x="900" y="958" text-anchor="middle" font-size="10" fill="#d8b4fe">FindByLoginAsync(Google, sub)</text>
+  <text x="900" y="975" text-anchor="middle" font-size="9" fill="#c084fc" opacity="0.8">→ check AspNetUserLogins table</text>
+
+  <!-- G11  DB → Identity: not found (first login) -->
+  <line x1="1060" y1="993" x2="740" y2="993" stroke="#c084fc" stroke-width="1.2" stroke-dasharray="5 3" marker-end="url(#arr-oauth)"/>
+  <text x="900" y="989" text-anchor="middle" font-size="9" fill="#c084fc">Not found  (first Google login)</text>
+
+  <!-- G12a  Identity → DB: CreateAsync -->
+  <line x1="740" y1="1015" x2="1060" y2="1015" stroke="#c084fc" stroke-width="1.5" marker-end="url(#arr-oauth)"/>
+  <text x="900" y="1008" text-anchor="middle" font-size="10" fill="#d8b4fe">UserManager.CreateAsync()</text>
+  <text x="900" y="1025" text-anchor="middle" font-size="9" fill="#c084fc" opacity="0.8">INSERT INTO AspNetUsers  (auto username from email)</text>
+
+  <!-- G12b  Identity → DB: AddLoginAsync -->
+  <line x1="740" y1="1045" x2="1060" y2="1045" stroke="#c084fc" stroke-width="1.5" marker-end="url(#arr-oauth)"/>
+  <text x="900" y="1038" text-anchor="middle" font-size="10" fill="#d8b4fe">UserManager.AddLoginAsync()</text>
+  <text x="900" y="1055" text-anchor="middle" font-size="9" fill="#c084fc" opacity="0.8">INSERT INTO AspNetUserLogins  (Google, sub)</text>
+
+  <!-- G13  DB → Identity: OK -->
+  <line x1="1060" y1="1070" x2="740" y2="1070" stroke="#c084fc" stroke-width="1.2" stroke-dasharray="5 3" marker-end="url(#arr-oauth)"/>
+  <text x="900" y="1066" text-anchor="middle" font-size="9" fill="#c084fc">OK</text>
+
+  <!-- Identity: Set transient cookie -->
+  <rect x="640" y="1078" width="200" height="21" rx="4" fill="#1e0840" fill-opacity="0.6" stroke="#9333ea" stroke-width="0.7" stroke-opacity="0.6"/>
+  <text x="740" y="1093" text-anchor="middle" font-size="9.5" fill="#e9d5ff">SignInAsync(cookie) with UserId  [transient]</text>
+
+  <!-- G14  Identity → SPA: 302 back to /connect/authorize -->
+  <line x1="740" y1="1110" x2="155" y2="1110" stroke="#c084fc" stroke-width="1.2" stroke-dasharray="5 3" marker-end="url(#arr-oauth)"/>
+  <text x="447" y="1106" text-anchor="middle" font-size="9" fill="#c084fc">302 → /connect/authorize  (same URL, cookie now set)</text>
+
+  <!-- ── Phase 3: Authorization Code ── -->
+  <line x1="130" y1="1126" x2="1488" y2="1126" stroke="#7c3aed" stroke-width="0.5" stroke-opacity="0.3" stroke-dasharray="3 5"/>
+  <rect x="130" y="1119" width="192" height="15" rx="7" fill="#3b0764" fill-opacity="0.75"/>
+  <text x="226" y="1130" text-anchor="middle" font-size="8" font-weight="700" fill="#c084fc" letter-spacing="0.9">PHASE 3 — AUTHORIZATION CODE</text>
+
+  <!-- G15  SPA → Identity: 2nd visit, cookie present -->
+  <line x1="155" y1="1155" x2="740" y2="1155" stroke="#c084fc" stroke-width="1.5" marker-end="url(#arr-oauth)"/>
+  <text x="447" y="1148" text-anchor="middle" font-size="10" fill="#d8b4fe">GET /connect/authorize  (2nd visit — cookie present)</text>
+
+  <!-- Identity: Read cookie → UserId -->
+  <rect x="640" y="1162" width="200" height="21" rx="4" fill="#1e0840" fill-opacity="0.6" stroke="#9333ea" stroke-width="0.7" stroke-opacity="0.6"/>
+  <text x="740" y="1177" text-anchor="middle" font-size="9.5" fill="#e9d5ff">Read cookie → UserId;  delete cookie</text>
+
+  <!-- G16  Identity → DB: FindByIdAsync -->
+  <line x1="740" y1="1194" x2="1060" y2="1194" stroke="#c084fc" stroke-width="1.5" marker-end="url(#arr-oauth)"/>
+  <text x="900" y="1188" text-anchor="middle" font-size="10" fill="#d8b4fe">UserManager.FindByIdAsync(UserId)</text>
+
+  <!-- G17  DB → Identity: user record -->
+  <line x1="1060" y1="1216" x2="740" y2="1216" stroke="#c084fc" stroke-width="1.2" stroke-dasharray="5 3" marker-end="url(#arr-oauth)"/>
+  <text x="900" y="1212" text-anchor="middle" font-size="9" fill="#c084fc">User record</text>
+
+  <!-- Identity: Build ClaimsIdentity + issue auth code (2-line note) -->
+  <rect x="640" y="1224" width="200" height="34" rx="4" fill="#1e0840" fill-opacity="0.6" stroke="#9333ea" stroke-width="0.7" stroke-opacity="0.6"/>
+  <text x="740" y="1237" text-anchor="middle" font-size="9.5" fill="#e9d5ff">Build ClaimsIdentity (sub, name, email, role)</text>
+  <text x="740" y="1251" text-anchor="middle" font-size="9.5" fill="#e9d5ff">SignIn → OpenIddict issues authorization code</text>
+
+  <!-- G18  Identity → SPA: 302 → /complete?code=... -->
+  <line x1="740" y1="1271" x2="155" y2="1271" stroke="#c084fc" stroke-width="1.2" stroke-dasharray="5 3" marker-end="url(#arr-oauth)"/>
+  <text x="447" y="1267" text-anchor="middle" font-size="9" fill="#c084fc">302 → /api/auth/external/complete?code=...&amp;state=/dashboard</text>
+
+  <!-- ── Phase 4: Code Exchange ── -->
+  <line x1="130" y1="1287" x2="1488" y2="1287" stroke="#7c3aed" stroke-width="0.5" stroke-opacity="0.3" stroke-dasharray="3 5"/>
+  <rect x="130" y="1280" width="172" height="15" rx="7" fill="#3b0764" fill-opacity="0.75"/>
+  <text x="216" y="1291" text-anchor="middle" font-size="8" font-weight="700" fill="#c084fc" letter-spacing="0.9">PHASE 4 — CODE EXCHANGE</text>
+
+  <!-- G19  SPA → WebApi: GET /complete -->
+  <line x1="155" y1="1318" x2="415" y2="1318" stroke="#c084fc" stroke-width="1.5" marker-end="url(#arr-oauth)"/>
+  <text x="285" y="1311" text-anchor="middle" font-size="10" fill="#d8b4fe">GET /api/auth/external/complete</text>
+  <text x="285" y="1328" text-anchor="middle" font-size="9" fill="#c084fc" opacity="0.8">?code=...&amp;state=/dashboard</text>
+
+  <!-- WebApi: Derive redirect_uri -->
+  <rect x="315" y="1336" width="200" height="21" rx="4" fill="#1e0840" fill-opacity="0.6" stroke="#9333ea" stroke-width="0.7" stroke-opacity="0.6"/>
+  <text x="415" y="1351" text-anchor="middle" font-size="9.5" fill="#e9d5ff">Derive redirect_uri from Request.Scheme+Host</text>
+
+  <!-- G20  WebApi → Identity: POST /connect/token (authorization_code) -->
+  <line x1="415" y1="1368" x2="740" y2="1368" stroke="#c084fc" stroke-width="1.5" marker-end="url(#arr-oauth)"/>
+  <text x="577" y="1361" text-anchor="middle" font-size="10" fill="#d8b4fe">POST /connect/token</text>
+  <text x="577" y="1378" text-anchor="middle" font-size="9" fill="#c084fc" opacity="0.8">grant_type=authorization_code + code + redirect_uri</text>
+
+  <!-- G21  Identity → DB: Validate code -->
+  <line x1="740" y1="1398" x2="1060" y2="1398" stroke="#c084fc" stroke-width="1.5" marker-end="url(#arr-oauth)"/>
+  <text x="900" y="1391" text-anchor="middle" font-size="10" fill="#d8b4fe">Validate code  (OpenIddict token store)</text>
+  <text x="900" y="1408" text-anchor="middle" font-size="9" fill="#c084fc" opacity="0.8">Verify redirect_uri match,  mark redeemed</text>
+
+  <!-- G22  DB → Identity: valid + redeemed -->
+  <line x1="1060" y1="1425" x2="740" y2="1425" stroke="#c084fc" stroke-width="1.2" stroke-dasharray="5 3" marker-end="url(#arr-oauth)"/>
+  <text x="900" y="1421" text-anchor="middle" font-size="9" fill="#c084fc">Valid + redeemed</text>
+
+  <!-- Identity: Sign final JWT -->
+  <rect x="640" y="1433" width="200" height="21" rx="4" fill="#1e0840" fill-opacity="0.6" stroke="#9333ea" stroke-width="0.7" stroke-opacity="0.6"/>
+  <text x="740" y="1448" text-anchor="middle" font-size="9.5" fill="#e9d5ff">Sign final JWT  (same claims as authorize step)</text>
+
+  <!-- G23  Identity → WebApi (return tokens) -->
+  <line x1="740" y1="1465" x2="415" y2="1465" stroke="#c084fc" stroke-width="1.2" stroke-dasharray="5 3" marker-end="url(#arr-oauth)"/>
+  <text x="577" y="1461" text-anchor="middle" font-size="9" fill="#c084fc">{access_token, expires_in}</text>
+
+  <!-- WebApi: Decode JWT, extract name claim -->
+  <rect x="315" y="1473" width="200" height="21" rx="4" fill="#1e0840" fill-opacity="0.6" stroke="#9333ea" stroke-width="0.7" stroke-opacity="0.6"/>
+  <text x="415" y="1488" text-anchor="middle" font-size="9.5" fill="#e9d5ff">Decode JWT payload → extract "name" claim</text>
+
+  <!-- G24  WebApi → SPA: 200 LoginResponse -->
+  <line x1="415" y1="1505" x2="155" y2="1505" stroke="#c084fc" stroke-width="1.2" stroke-dasharray="5 3" marker-end="url(#arr-oauth)"/>
+  <text x="285" y="1501" text-anchor="middle" font-size="9" fill="#c084fc">200 LoginResponse {username, expiresAt, accessToken}</text>
+
+  <!-- SPA: Store + navigate -->
+  <rect x="55" y="1513" width="200" height="21" rx="4" fill="#1e0840" fill-opacity="0.6" stroke="#9333ea" stroke-width="0.7" stroke-opacity="0.6"/>
+  <text x="155" y="1528" text-anchor="middle" font-size="9.5" fill="#e9d5ff">Store JWT in localStorage,  navigate to /dashboard</text>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!--  AUTH REQUEST FLOW                                         -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+
+  <!-- A1  SPA → WebApi: GET /me -->
+  <line x1="155" y1="1622" x2="415" y2="1622" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#arr-auth)"/>
+  <text x="285" y="1615" text-anchor="middle" font-size="10" fill="#fde68a">GET /api/auth/me</text>
+  <text x="285" y="1632" text-anchor="middle" font-size="9" fill="#fbbf24" opacity="0.8">Authorization: Bearer &lt;JWT&gt;</text>
+
+  <!-- WebApi: [Authorize] validates JWT -->
+  <rect x="315" y="1640" width="200" height="21" rx="4" fill="#3d1500" fill-opacity="0.6" stroke="#f59e0b" stroke-width="0.7" stroke-opacity="0.6"/>
+  <text x="415" y="1655" text-anchor="middle" font-size="9.5" fill="#fde68a">[Authorize] validates JWT  (OpenIddict.Validation)</text>
+
+  <!-- A2  WebApi → Identity: /userinfo -->
+  <line x1="415" y1="1672" x2="740" y2="1672" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#arr-auth)"/>
+  <text x="577" y="1665" text-anchor="middle" font-size="10" fill="#fde68a">GET /connect/userinfo</text>
+  <text x="577" y="1682" text-anchor="middle" font-size="9" fill="#fbbf24" opacity="0.8">forward Authorization: Bearer header</text>
+
+  <!-- Identity: Introspect token -->
+  <rect x="640" y="1690" width="200" height="21" rx="4" fill="#3d1500" fill-opacity="0.6" stroke="#f59e0b" stroke-width="0.7" stroke-opacity="0.6"/>
+  <text x="740" y="1705" text-anchor="middle" font-size="9.5" fill="#fde68a">Introspect token,  extract claims</text>
+
+  <!-- A3  Identity → WebApi: UserInfo JSON -->
+  <line x1="740" y1="1722" x2="415" y2="1722" stroke="#fbbf24" stroke-width="1.2" stroke-dasharray="5 3" marker-end="url(#arr-auth)"/>
+  <text x="577" y="1718" text-anchor="middle" font-size="9" fill="#fbbf24">{sub, name, email, email_verified, phone_number, role}</text>
+
+  <!-- A4  WebApi → SPA: 200 UserInfo -->
+  <line x1="415" y1="1748" x2="155" y2="1748" stroke="#fbbf24" stroke-width="1.2" stroke-dasharray="5 3" marker-end="url(#arr-auth)"/>
+  <text x="285" y="1744" text-anchor="middle" font-size="9" fill="#fbbf24">200 UserInfo object</text>
+
+  <!-- ═══════════════════ FOOTER ═══════════════════ -->
+  <text x="750" y="1803" text-anchor="middle" font-size="9" fill="#334155" letter-spacing="0.6">
+    ECOM E-Commerce Platform  ·  OpenIddict Mimban Pattern  ·  Confidential Client  ·  JWT Bearer Auth  ·  AspNetIdentity + OpenIddict
+  </text>
+</svg>

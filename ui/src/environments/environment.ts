@@ -1,4 +1,4 @@
 export const environment = {
-  production: false,
-  webApiBaseUrl: "http://localhost:5001",
+  production: true,
+  webApiBaseUrl: "",
 };

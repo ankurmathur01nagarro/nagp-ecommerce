@@ -8,11 +8,9 @@ steps:
       - '-c'
       - |
         docker login --username=$$USERNAME --password=$$PASSWORD
-        docker build -t $$USERNAME/nagp-ecom-ui:${_IMAGE_TAG} -f ui/Dockerfile ./ui
-        docker push $$USERNAME/nagp-ecom-ui:${_IMAGE_TAG}
         docker build -t $$USERNAME/nagp-ecom-migration:${_IMAGE_TAG} -f api/Dockerfile.migration ./api
         docker push $$USERNAME/nagp-ecom-migration:${_IMAGE_TAG}
-        docker build -t $$USERNAME/nagp-ecom-webapi:${_IMAGE_TAG} -f api/Dockerfile.api ./api
+        docker build -t $$USERNAME/nagp-ecom-webapi:${_IMAGE_TAG} -f Dockerfile.webapi ./
         docker push $$USERNAME/nagp-ecom-webapi:${_IMAGE_TAG}
         docker build -t $$USERNAME/nagp-ecom-identity-api:${_IMAGE_TAG} -f api/Dockerfile.identity ./api
         docker push $$USERNAME/nagp-ecom-identity-api:${_IMAGE_TAG}

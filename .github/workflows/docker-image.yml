@@ -17,12 +17,6 @@ jobs:
     - uses: actions/setup-node@v6.3.0
       with:
         node-version: 24.x
-    - name: Build UI
-      shell: 'pwsh'
-      run: |
-        cd ./ui
-        npm ci
-        npm run build
     - name: Build Identity API
       shell: 'pwsh'
       run: |
@@ -50,48 +44,30 @@ jobs:
         username: ankurmathur01nagarro
         password: ${{ env.docker_pat }}
     
-    - name: Build and push UI Docker images
-      uses: docker/build-push-action@v7.0.0
-      with:
-        push: true
-        # Build's context is the set of files located in the specified PATH or URL
-        context: ./ui
-        # Path to the Dockerfile
-        file: ./ui/Dockerfile
-        # List of tags
-        tags: docker.io/ankurmathur01nagarro/nagp-ecom-ui:${{ env.image_tag }},docker.io/ankurmathur01nagarro/nagp-ecom-ui:latest
-    
     - name: Build and push Database Migration Docker images
       uses: docker/build-push-action@v7.0.0
       with:
         push: true
-        # Build's context is the set of files located in the specified PATH or URL
         context: ./api
-        # Path to the Dockerfile
         file: ./api/Dockerfile.migration
-        # List of tags
         tags: docker.io/ankurmathur01nagarro/nagp-ecom-migration:${{ env.image_tag }},docker.io/ankurmathur01nagarro/nagp-ecom-migration:latest
     
+    # Unified image: builds Angular (stage 1) + .NET WebApi (stage 2) in a single Dockerfile.
+    # Context is the repo root (src/) so both ui/ and api/ are accessible.
     - name: Build and push Web API Docker images
       uses: docker/build-push-action@v7.0.0
       with:
         push: true
-        # Build's context is the set of files located in the specified PATH or URL
-        context: ./api
-        # Path to the Dockerfile
-        file: ./api/Dockerfile.api
-        # List of tags
+        context: .
+        file: ./Dockerfile.webapi
         tags: docker.io/ankurmathur01nagarro/nagp-ecom-webapi:${{ env.image_tag }},docker.io/ankurmathur01nagarro/nagp-ecom-webapi:latest
     
     - name: Build and push Identity API Docker images
       uses: docker/build-push-action@v7.0.0
       with:
         push: true
-        # Build's context is the set of files located in the specified PATH or URL
         context: ./api
-        # Path to the Dockerfile
         file: ./api/Dockerfile.identity
-        # List of tags
         tags: docker.io/ankurmathur01nagarro/nagp-ecom-identity-api:${{ env.image_tag }},docker.io/ankurmathur01nagarro/nagp-ecom-identity-api:latest
   release:
     needs: build-container-images
@@ -105,11 +81,6 @@ jobs:
       shell: 'pwsh'
       run: |
         cd ./deployment/scripts/deployment
-        
-        Push-Location
-        cd ui/overlays/local
-        kustomize edit set image nagp-ecom-ui=*:${{ env.image_tag }}
-        Pop-Location
         
         Push-Location
         cd web-api/overlays/local

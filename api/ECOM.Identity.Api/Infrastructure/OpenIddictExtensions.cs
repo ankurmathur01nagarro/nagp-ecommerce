@@ -1,7 +1,7 @@
 using ECOM.Identity.Api.DataAccess;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-
 namespace ECOM.Identity.Api.Infrastructure;
 
 public static class OpenIddictExtensions
@@ -23,6 +23,12 @@ public static class OpenIddictExtensions
             .AddEntityFrameworkStores<IdentityDbContext>()
             .AddDefaultTokenProviders();
 
+        // A transient cookie is required to bridge the Google callback to /connect/authorize.
+        // It carries the external identity for one browser round-trip only — it is not the app's auth mechanism.
+        builder.Services
+            .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+            .AddCookie();
+
         builder.Services
             .AddOpenIddict()
             .AddCore(options =>
@@ -30,8 +36,49 @@ public static class OpenIddictExtensions
                 options.UseEntityFrameworkCore()
                     .UseDbContext<IdentityDbContext>();
             })
+            // CLIENT role: manages the OAuth dance with Google on our behalf.
+            // OpenIddict tracks PKCE, state, and nonce in its own DB token store.
+            .AddClient(options =>
+            {
+                options.AllowAuthorizationCodeFlow();
+
+                options.AddDevelopmentEncryptionCertificate()
+                       .AddDevelopmentSigningCertificate();
+
+                options.UseAspNetCore()
+                       .DisableTransportSecurityRequirement()
+                       .EnableRedirectionEndpointPassthrough(); // we handle the callback ourselves
+
+                options.UseSystemNetHttp();
+                
+                options.UseWebProviders()
+                       .AddGoogle(google =>
+                       {
+                           // The callback URI must point to the YARP proxy route on the WebApi host
+                           // (/api/auth/google/callback) so the browser never needs to reach the
+                           // Identity API directly. Configure per environment in appsettings.
+                           var callbackUri = builder.Configuration["ExternalAuth:Google:CallbackUri"]
+                               ?? "callback/login/google";
+
+                           google
+                               .SetClientId(builder.Configuration["ExternalAuth:Google:ClientId"]!)
+                               .SetClientSecret(builder.Configuration["ExternalAuth:Google:ClientSecret"]!)
+                               .SetRedirectUri(callbackUri)
+                               .AddScopes("email", "profile");
+                       });
+            })
+            // SERVER role: issues our own JWT to WebApi clients.
             .AddServer(options =>
             {
+                // Pin the issuer to the Identity API's own base URL so that tokens always carry
+                // iss=<IdentityApi base>, regardless of X-Forwarded-Host set by the YARP proxy.
+                // If this is not set, OpenIddict derives the issuer from Request.Host which
+                // would be the proxy host (e.g. localhost:5001) and break token validation in WebApi.
+                var issuer = builder.Configuration["OpenIddict:Issuer"];
+                if (!string.IsNullOrEmpty(issuer))
+                    options.SetIssuer(new Uri(issuer));
+
+                options.SetAuthorizationEndpointUris("/connect/authorize");
                 options.SetTokenEndpointUris("/connect/token");
                 options.SetUserInfoEndpointUris("/connect/userinfo");
 
@@ -39,6 +86,7 @@ public static class OpenIddictExtensions
 
                 options.AllowClientCredentialsFlow();
                 options.AllowPasswordFlow();
+                options.AllowAuthorizationCodeFlow();
 
                 // In dev, use ephemeral keys (don't persist between restarts)
                 options.AddEphemeralEncryptionKey()
@@ -49,6 +97,7 @@ public static class OpenIddictExtensions
                 options.DisableAccessTokenEncryption();
 
                 options.UseAspNetCore()
+                    .EnableAuthorizationEndpointPassthrough() // we build the principal in /connect/authorize
                     .EnableTokenEndpointPassthrough()
                     .EnableUserInfoEndpointPassthrough()
                     .DisableTransportSecurityRequirement();

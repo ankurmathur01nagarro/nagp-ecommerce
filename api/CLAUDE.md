@@ -48,6 +48,7 @@ This is an e-commerce backend built on **.NET 10** with **PostgreSQL 17** as the
 - **API docs** — OpenAPI served via Scalar at `/scalar` (dev-only). The `.http` files in each project are for VS REST client testing.
 - **Database extensions** — `ECOM.WebApi` registers the DbContext via a `RegisterDatabaseServices()` extension method (in `ECOM.WebApi.Data`).
 - **JSONB** — `Products.Metadata` is a JSONB column in PostgreSQL.
+- **One model per file** — every public `record`/DTO/result type has its own dedicated `.cs` file. Never co-locate multiple types in the same file.
 
 ### Data Model
 
@@ -60,6 +61,36 @@ Kubernetes manifests use **Kustomize** with two overlays:
 - `deployment/overlays/cloud/` — cloud environment, uses cloud PVC/StatefulSet patches
 
 The PostgreSQL StatefulSet runs `postgres:18.3-alpine` in namespace `nagp-ecom`.
+
+### Auth Architecture
+
+`ECOM.Identity.Api` is the OpenIddict authorization server. `ECOM.WebApi` is a confidential OAuth client of it.
+
+**Token flow (username/password):**
+```
+SPA → POST /api/auth/login → WebApi → POST /connect/token (password grant) → Identity API → JWT
+```
+
+**Google OAuth flow (OpenIddict Mimban pattern — AddClient + AddServer in same process):**
+```
+SPA → GET /api/auth/external/challenge
+    → 302 to Identity API /connect/authorize
+    → (no cookie) Challenge to Google
+    → Google consent → /callback/login/google (provisions user, sets transient cookie)
+    → /connect/authorize (cookie → issues auth code)
+    → 302 to WebApi /api/auth/external/complete?code=...
+    → server-to-server POST /connect/token (authorization_code grant)
+    → JWT returned to SPA as JSON
+```
+
+Key files:
+- `ECOM.Identity.Api/Infrastructure/OpenIddictExtensions.cs` — registers AddClient + AddServer + cookie auth
+- `ECOM.Identity.Api/Infrastructure/Workers/ClientSeeder.cs` — seeds the EcomApi client with all required permissions and redirect URIs
+- `ECOM.Identity.Api/Program.cs` — `/callback/login/google` and `/connect/authorize` minimal endpoints
+- `ECOM.WebApi/Auth/IdentityService.cs` — calls `/connect/token` for both password and authorization_code grants
+- `ECOM.WebApi/Controllers/AuthController.cs` — `/challenge` (redirect) and `/complete` (code exchange)
+
+**To activate Google login:** set `ExternalAuth:Google:ClientId` + `ExternalAuth:Google:ClientSecret` in `ECOM.Identity.Api/appsettings.json` and register `http://localhost:5170/api/auth/external/complete` in Google Cloud Console.
 
 ### Known Issues
 

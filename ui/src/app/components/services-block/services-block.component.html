@@ -1,0 +1,16 @@
+<div class="container">
+  <div class="gap-60"></div>
+  <div class="row">
+    @for (item of items(); track item.title) {
+      <div class="col-sm-4">
+        <div class="services-item">
+          <p class="si-icon"><i [class]="item.icon"></i></p>
+          <h3 class="si-title"><a [href]="item.link ?? '#'">{{ item.title }}</a></h3>
+          <hr class="si-line" />
+          <p class="si-content">{{ item.description }}</p>
+        </div>
+      </div>
+    }
+  </div>
+  <div class="gap-30"></div>
+</div>

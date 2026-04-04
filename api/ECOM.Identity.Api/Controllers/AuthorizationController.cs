@@ -33,6 +33,11 @@ public partial class AuthorizationController(
             return await HandlePasswordGrantAsync(request, ct);
         }
 
+        if (request.IsAuthorizationCodeGrantType())
+        {
+            return await HandleAuthorizationCodeGrantAsync(ct);
+        }
+
         return Forbid(
             new AuthenticationProperties(new Dictionary<string, string?>
             {
@@ -82,6 +87,27 @@ public partial class AuthorizationController(
         principal.SetResources("ecom-api");
 
         return SignIn(principal, OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+    }
+
+    private async Task<IActionResult> HandleAuthorizationCodeGrantAsync(CancellationToken ct)
+    {
+        // Retrieve the claims principal that was embedded in the authorization code
+        // by the /connect/authorize endpoint when the code was issued.
+        var result = await HttpContext.AuthenticateAsync(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+
+        var userId = result.Principal?.GetClaim(Claims.Subject);
+        if (userId is null || await userManager.FindByIdAsync(userId) is null)
+        {
+            return Forbid(
+                new AuthenticationProperties(new Dictionary<string, string?>
+                {
+                    [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidGrant,
+                    [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "The authorization code is no longer valid."
+                }),
+                OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+        }
+
+        return SignIn(result.Principal!, OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
     }
 
     private ForbidResult InvalidCredentialsForbid() =>

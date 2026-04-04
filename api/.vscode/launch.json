@@ -5,27 +5,17 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "C#: ECOM.Identity.Api [https]",
+            "name": "C#: Web.Api Debug",
             "type": "dotnet",
             "request": "launch",
-            "projectPath": "${workspaceFolder}\\ECOM.Identity.Api\\ECOM.Identity.Api.csproj",
-            "launchConfigurationId": "TargetFramework=;https"
+            "projectPath": "${workspaceFolder}/ECOM.WebApi/ECOM.WebApi.csproj"
         },
-        {
-            "name": "C#: ECOM.WebApi [https]",
+{
+            "name": "C#: Identity Debug",
             "type": "dotnet",
             "request": "launch",
-            "projectPath": "${workspaceFolder}\\ECOM.WebApi\\ECOM.WebApi.csproj",
-            "launchConfigurationId": "TargetFramework=;https"
-        },
-    ],
-    "compounds": [
-        {
-            "name": "Ecom APIs",
-            "configurations": [
-                "C#: ECOM.Identity.Api [https]",
-                "C#: ECOM.WebApi [https]"
-            ]
+            "projectPath": "${workspaceFolder}/ECOM.Identity.Api/ECOM.Identity.Api.csproj"
         }
-    ]
+    ],
+    "compounds": []
 }

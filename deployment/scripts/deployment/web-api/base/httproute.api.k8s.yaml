@@ -12,14 +12,11 @@ spec:
     - name: nagp-ecom-gateway
       namespace: nagp-ecom
   rules:
-  - name: api-routes
+  - name: all-routes
     matches:
     - path:
         type: PathPrefix
-        value: /api
-    - path:
-        type: RegularExpression
-        value: "/(scalar|openapi)(/|$)"
+        value: /
     backendRefs:
     - name: nagp-ecom-api
       namespace: nagp-ecom
