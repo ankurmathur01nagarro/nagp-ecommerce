@@ -59,20 +59,19 @@ argocd-apps:
       finalizers:
         - resources-finalizer.argocd.argoproj.io
       project: nagp-ecom
-      source:
-        repoURL: https://github.com/ebrianne/cert-manager-webhook-duckdns
-        targetRevision: master
-        path: deploy/cert-manager-webhook-duckdns
-        helm:
-          parameters:
-            - name: duckdns.token
-              value: ""
-            - name: secret.existingSecretName
-              value: duckdns-credentials
-            - name: clusterIssuer.production.create
-              value: "true"
-            - name: clusterIssuer.email
-              value: "ankurakaet@gmail.com"
+      sources:
+        - repoURL: https://github.com/ebrianne/cert-manager-webhook-duckdns
+          targetRevision: master
+          path: deploy/cert-manager-webhook-duckdns
+          helm:
+            valueFiles:
+              - $values/deployment/scripts/deployment/cert-manager/values.cert-manager.yaml
+        - repoURL: https://github.com/ankurmathur01nagarro/nagp-ecommerce
+          targetRevision: HEAD
+          ref: values
+        - repoURL: https://github.com/ankurmathur01nagarro/nagp-ecommerce
+          targetRevision: HEAD
+          path: deployment/scripts/deployment/cert-manager/overlays/local
       destination:
         server: https://kubernetes.default.svc
         namespace: cert-manager

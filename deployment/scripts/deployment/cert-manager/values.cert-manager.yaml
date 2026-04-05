@@ -1,0 +1,10 @@
+duckdns:
+  token: ""
+
+secret:
+  existingSecretName: duckdns-credentials
+
+clusterIssuer:
+  production:
+    create: true
+  email: "ankurakaet@gmail.com"
