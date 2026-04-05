@@ -53,7 +53,7 @@ argocd-apps:
 
   applications:
     cert-manager-webhook-duckdns:
-      namespace: nagp-ecom
+      namespace: argocd
       additionalAnnotations:
         argocd.argoproj.io/sync-wave: "1"
       finalizers:
