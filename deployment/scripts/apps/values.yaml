@@ -23,13 +23,8 @@ argocd-apps:
           kind: ClusterIssuer
         - group: external-secrets.io
           kind: ClusterSecretStore
-        - group: rbac.authorization.k8s.io
-          kind: ClusterRole
-        - group: rbac.authorization.k8s.io
-          kind: ClusterRoleBinding
       sourceRepos:
         - '*'
-
     observability:
       namespace: argocd
       description: "Observability stack with security isolation"
@@ -54,6 +49,24 @@ argocd-apps:
           kind: CustomResourceDefinition
       sourceRepos:
         - '*'
+    cert-manager:
+      namespace: argocd
+      description: "Certification Manager for managing TLS certificates"
+      destinations:
+        - name: defaultCluster
+          namespace: '*'
+          server: https://kubernetes.default.svc
+      clusterResourceWhitelist:
+        - group: ''
+          kind: Namespace
+        - group: rbac.authorization.k8s.io
+          kind: ClusterRole
+        - group: rbac.authorization.k8s.io
+          kind: ClusterRoleBinding
+        - group: apiextensions.k8s.io
+          kind: CustomResourceDefinition
+      sourceRepos:
+        - '*'
 
   applications:
     cert-manager-webhook-duckdns:
@@ -62,7 +75,7 @@ argocd-apps:
         argocd.argoproj.io/sync-wave: "1"
       finalizers:
         - resources-finalizer.argocd.argoproj.io
-      project: nagp-ecom
+      project: cert-manager
       sources:
         - repoURL: https://github.com/ebrianne/cert-manager-webhook-duckdns
           targetRevision: master
