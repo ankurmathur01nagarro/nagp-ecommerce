@@ -61,6 +61,11 @@ spec:
                 configMapKeyRef:
                   name: identity-api-config
                   key: POST_CALLBACK_BASE_URL
+            - name: OpenIddict__Issuer
+              valueFrom:
+                configMapKeyRef:
+                  name: identity-api-config
+                  key: HOSTNAME
             - name: OpenIddict__Clients__EcomApi__ClientId
               valueFrom:
                 secretKeyRef:
