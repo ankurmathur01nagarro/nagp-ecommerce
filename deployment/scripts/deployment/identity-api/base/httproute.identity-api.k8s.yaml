@@ -17,6 +17,9 @@ spec:
         - path:
             type: PathPrefix
             value: /connect
+        - path:
+            type: PathPrefix
+            value: /.well-known
       backendRefs:
         - name: nagp-ecom-identity-api
           namespace: nagp-ecom

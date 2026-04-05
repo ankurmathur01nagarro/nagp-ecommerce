@@ -64,6 +64,11 @@ spec:
                 secretKeyRef:
                   name: identity-api-secrets
                   key: ECOMAPI_CLIENT_SECRET
+            - name: OpenIddict__Issuer
+              valueFrom:
+                configMapKeyRef:
+                  name: identity-api-config
+                  key: HOSTNAME
           resources:
             requests:
               cpu: 100m
