@@ -22,9 +22,11 @@ See `api/CLAUDE.md` for full build/run commands and architecture overview.
 - **OpenIddict 7.4.0** — Identity server (AddServer) + Google OAuth client (AddClient) in one process
 - **YARP 2.3.0** — Embedded reverse proxy inside WebApi; routes browser-facing Identity endpoints
 - **Angular 21** — SPA served from WebApi's `wwwroot` via `UseStaticFiles` + `MapFallbackToFile`
-- **Gateway API HTTPRoute** (`gateway.networking.k8s.io/v1`) — not nginx Ingress
-- **Kustomize** — base/overlays pattern; ArgoCD/Flux GitOps delivery
-- **External Secrets Operator** — reads from Azure Key Vault (`kv-nagp-ecom-secrets`)
+- **Gateway API HTTPRoute** (`gateway.networking.k8s.io/v1`) — not nginx Ingress, Istio gateway class
+- **Kustomize** — base/overlays pattern; ArgoCD GitOps delivery
+- **External Secrets Operator** — reads from Azure Key Vault (`kv-nagp-ecom-secrets`); uses `ClusterSecretStore` (not namespace-scoped `SecretStore`) so ExternalSecrets in any namespace can reference it
+- **cert-manager** — DuckDNS DNS-01 webhook issues Let's Encrypt certs; webhook deployed via ArgoCD pointing at GitHub repo directly (not Helm Pages)
+- **Domain** — `nagp-ecom.duckdns.org` → `192.168.1.240` (MetalLB). All public-facing URLs use this domain.
 
 ## Key Conventions
 
@@ -33,6 +35,7 @@ See `api/CLAUDE.md` for full build/run commands and architecture overview.
 - **Centralized NuGet versions** — all versions in `Directory.Packages.props`; never specify versions in individual `.csproj` files
 - **`KnownIPNetworks.Clear()`** (not `KnownNetworks`) — use this for ForwardedHeaders in .NET 10
 - **`ASPNETCORE_ENVIRONMENT: Kubernetes`** — third appsettings tier; `appsettings.Kubernetes.json` loaded in K8s pods
+- **Public domain** — `https://nagp-ecom.duckdns.org` (not `YOUR_PUBLIC_DOMAIN` placeholder — that comment in the old file is outdated)
 - `ConnectionStrings` key is **`PostgresConnString`** in WebApi, **`Default`** in Identity API and MigrationJob
 
 ### YARP Config (appsettings)
@@ -65,7 +68,7 @@ Browser → /api/auth/external/challenge (WebApi)
 | Docker Compose | WebApi `wwwroot` | `localhost:5001` | `http://localhost:5001` |
 | Kubernetes | WebApi `wwwroot` | `https://YOUR_PUBLIC_DOMAIN` | `https://YOUR_PUBLIC_DOMAIN` |
 
-`YOUR_PUBLIC_DOMAIN` placeholders in `appsettings.Kubernetes.json` will be replaced by a K8s ConfigMap — do not hardcode them.
+The public domain is `nagp-ecom.duckdns.org`. This is already set in `appsettings.Kubernetes.json` and the identity-api ConfigMap.
 
 ## K8s Service Names (namespace: `nagp-ecom`)
 
@@ -88,6 +91,32 @@ Browser → /api/auth/external/challenge (WebApi)
 - In K8s, inject via environment variables from an `ExternalSecret` (Azure Key Vault) — do not put real credentials in `appsettings.Kubernetes.json`.
 - `IdentityApi:ClientSecret` in WebApi and `OpenIddict:Clients:EcomApi:ClientSecret` in Identity API must always match — both are sourced from `secret/ECOMAPI-CLIENT-SECRET` in Key Vault.
 
+## Kubernetes / ArgoCD Patterns
+
+### Namespace
+- All app resources use `namespace: nagp-ecom`, set explicitly in each resource's `metadata` — never use Kustomize `namespace:` field injection
+- Overlay patches must include `metadata.namespace` to match the base resource ID (Kustomize matches on group/kind/namespace/name)
+- `cert-manager` namespace for the DuckDNS webhook and its ExternalSecret
+
+### ArgoCD Sync Waves
+| Wave | Apps |
+|------|------|
+| 1 | `cert-manager-webhook-duckdns` |
+| 3 | `nagp-ecom-infrastructure` (PostgreSQL, ClusterSecretStore, Certificate, Gateway) |
+| 4 | `nagp-ecom-api`, `nagp-ecom-identity-api` |
+| 5 | Observability (loki, tempo, prometheus, grafana, alloy) |
+
+### ArgoCD Project Whitelists (cluster-scoped resources)
+Cluster-scoped resources require explicit `clusterResourceWhitelist` entries — ArgoCD rejects syncs otherwise.
+- `nagp-ecom` project: `ClusterIssuer` (cert-manager.io), `ClusterSecretStore` (external-secrets.io), `ClusterRole` + `ClusterRoleBinding` (rbac.authorization.k8s.io)
+- `cert-manager` project: above + `CustomResourceDefinition` (apiextensions.k8s.io), `APIService` (apiregistration.k8s.io)
+
+### cert-manager / TLS
+- `ClusterIssuer: cert-manager-webhook-duckdns-production` uses DuckDNS DNS-01 challenge
+- `Certificate: ecom-tls` in `nagp-ecom` → issues `ecom-tls-secret` used by the Gateway HTTPS listener
+- DuckDNS token sourced from AKV → `duckdns-credentials` Secret in `cert-manager` via ExternalSecret
+- Values file for the webhook chart: `deployment/scripts/deployment/cert-manager/values.cert-manager.yaml`
+
 ## Azure Key Vault Secrets Required
 
 | Key Vault key | Consumed as |
@@ -96,3 +125,4 @@ Browser → /api/auth/external/challenge (WebApi)
 | `secret/POSTGRES-PASSWORD` | DB credential |
 | `secret/ECOMAPI-CLIENT-ID` | OpenIddict client ID |
 | `secret/ECOMAPI-CLIENT-SECRET` | OpenIddict client secret (same value in both WebApi and Identity API) |
+| `secret/DUCKDNS-TOKEN` | cert-manager DuckDNS webhook token |
