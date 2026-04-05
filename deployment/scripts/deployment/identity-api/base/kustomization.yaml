@@ -8,3 +8,4 @@ resources:
   - deploy.identity-api.k8s.yaml
   - service.identity-api.k8s.yaml
   - secret.identity-api.k8s.yaml
+  - configMap.identity-api.yaml

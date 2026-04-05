@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: identity-api-config
+  namespace: nagp-ecom
+data:
+  GOOGLE_CALLBACK_URI: "https://pve.ecom.lan/api/auth/google/callback"
+  POST_CALLBACK_BASE_URL: "https://pve.ecom.lan"

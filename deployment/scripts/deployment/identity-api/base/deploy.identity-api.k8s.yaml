@@ -40,6 +40,26 @@ spec:
                   key: POSTGRES_USERNAME
             - name: ConnectionStrings__Default
               value: "Host=postgres;Port=5432;Database=ecomdb;Username=$(POSTGRES_USERNAME);Password=$(POSTGRES_PASSWORD)"
+            - name: ExternalAuth__Google__ClientId
+              valueFrom:
+                secretKeyRef:
+                  name: web-api-secrets
+                  key: GOOGLE_CLIENT_ID
+            - name: ExternalAuth__Google__ClientSecret
+              valueFrom:
+                secretKeyRef:
+                  name: web-api-secrets
+                  key: GOOGLE_CLIENT_SECRET
+            - name: ExternalAuth__Google__CallbackUri
+              valueFrom:
+                configMapKeyRef:
+                  name: identity-api-config
+                  key: GOOGLE_CALLBACK_URI
+            - name: ExternalAuth__PostCallbackBaseUrl
+              valueFrom:
+                configMapKeyRef:
+                  name: identity-api-config
+                  key: POST_CALLBACK_BASE_URL
             - name: OpenIddict__Clients__EcomApi__ClientId
               valueFrom:
                 secretKeyRef:
