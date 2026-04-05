@@ -44,12 +44,12 @@ spec:
             - name: ExternalAuth__Google__ClientId
               valueFrom:
                 secretKeyRef:
-                  name: web-api-secrets
+                  name: secrets-nagp
                   key: GOOGLE_CLIENT_ID
             - name: ExternalAuth__Google__ClientSecret
               valueFrom:
                 secretKeyRef:
-                  name: web-api-secrets
+                  name: secrets-nagp
                   key: GOOGLE_CLIENT_SECRET
             - name: ExternalAuth__Google__CallbackUri
               valueFrom:
@@ -66,11 +66,6 @@ spec:
                 configMapKeyRef:
                   name: identity-api-config
                   key: HOSTNAME
-            - name: OpenIddict__Clients__EcomApi__ClientId
-              valueFrom:
-                secretKeyRef:
-                  name: identity-api-secrets
-                  key: ECOMAPI_CLIENT_ID
             - name: OpenIddict__Clients__EcomApi__ClientSecret
               valueFrom:
                 secretKeyRef:
