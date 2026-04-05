@@ -1,11 +1,11 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-namespace: nagp-ecom
-
 resources:
   - statefulSet.database.k8s.yaml
   - pvc.postgres.k8s.yaml
   - service.database.k8s.yaml
   - secretstore.k8s.yaml
   - secret.secrets-nagp.k8s.yaml
+  - secret.duckdns-credentials.k8s.yaml
+  - certificate.k8s.yaml

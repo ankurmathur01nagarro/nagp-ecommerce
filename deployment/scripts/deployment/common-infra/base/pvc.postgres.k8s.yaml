@@ -6,6 +6,7 @@ metadata:
     app: postgres
     type: pvc
     stack: nagp-ecom-api
+  namespace: nagp-ecom
 spec:
   accessModes:
     - ReadWriteOnce

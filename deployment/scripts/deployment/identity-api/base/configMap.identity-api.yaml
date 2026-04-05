@@ -4,5 +4,5 @@ metadata:
   name: identity-api-config
   namespace: nagp-ecom
 data:
-  GOOGLE_CALLBACK_URI: "https://pve.ecom.lan/api/auth/google/callback"
-  POST_CALLBACK_BASE_URL: "https://pve.ecom.lan"
+  GOOGLE_CALLBACK_URI: "https://nagp-ecom.duckdns.org/api/auth/google/callback"
+  POST_CALLBACK_BASE_URL: "https://nagp-ecom.duckdns.org"

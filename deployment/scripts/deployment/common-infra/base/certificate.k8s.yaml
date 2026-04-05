@@ -1,0 +1,12 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: ecom-tls
+  namespace: nagp-ecom
+spec:
+  secretName: ecom-tls-secret
+  issuerRef:
+    name: cert-manager-webhook-duckdns-production
+    kind: ClusterIssuer
+  dnsNames:
+  - nagp-ecom.duckdns.org

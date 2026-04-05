@@ -15,8 +15,16 @@ argocd-apps:
         - name: defaultCluster
           namespace: nagp-ecom
           server: https://kubernetes.default.svc
+        - name: defaultCluster
+          namespace: cert-manager
+          server: https://kubernetes.default.svc
+      clusterResourceWhitelist:
+        - group: cert-manager.io
+          kind: ClusterIssuer
+        - group: external-secrets.io
+          kind: ClusterSecretStore
       sourceRepos:
-        - https://github.com/ankurmathur01nagarro/nagp-ecommerce
+        - '*'
 
     observability:
       namespace: argocd
@@ -44,10 +52,40 @@ argocd-apps:
         - '*'
 
   applications:
+    cert-manager-webhook-duckdns:
+      namespace: argocd
+      additionalAnnotations:
+        argocd.argoproj.io/sync-wave: "1"
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+      project: nagp-ecom
+      source:
+        repoURL: https://github.com/ebrianne/cert-manager-webhook-duckdns
+        targetRevision: master
+        path: deploy/cert-manager-webhook-duckdns
+        helm:
+          parameters:
+            - name: duckdns.token
+              value: ""
+            - name: secret.existingSecretName
+              value: duckdns-credentials
+            - name: clusterIssuer.production.create
+              value: "true"
+            - name: clusterIssuer.email
+              value: "ankurakaet@gmail.com"
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: cert-manager
+      syncPolicy:
+        syncOptions:
+          - CreateNamespace=true
+        automated:
+          prune: true
+          selfHeal: true
     nagp-ecom-infrastructure:
       namespace: argocd
       additionalAnnotations:
-        argocd.argoproj.io/sync-wave: "4"
+        argocd.argoproj.io/sync-wave: "3"
       finalizers:
         - resources-finalizer.argocd.argoproj.io
       project: nagp-ecom
@@ -67,7 +105,7 @@ argocd-apps:
     nagp-ecom-api:
       namespace: argocd
       additionalAnnotations:
-        argocd.argoproj.io/sync-wave: "5"
+        argocd.argoproj.io/sync-wave: "4"
       finalizers:
         - resources-finalizer.argocd.argoproj.io
       project: nagp-ecom
@@ -87,7 +125,7 @@ argocd-apps:
     nagp-ecom-identity-api:
       namespace: argocd
       additionalAnnotations:
-        argocd.argoproj.io/sync-wave: "5"
+        argocd.argoproj.io/sync-wave: "4"
       finalizers:
         - resources-finalizer.argocd.argoproj.io
       project: nagp-ecom
@@ -107,7 +145,7 @@ argocd-apps:
     loki:
       namespace: argocd
       additionalAnnotations:
-        argocd.argoproj.io/sync-wave: "1"
+        argocd.argoproj.io/sync-wave: "5"
       finalizers:
         - resources-finalizer.argocd.argoproj.io
       project: observability
@@ -130,11 +168,10 @@ argocd-apps:
         automated:
           prune: true
           selfHeal: true
-
     tempo:
       namespace: argocd
       additionalAnnotations:
-        argocd.argoproj.io/sync-wave: "1"
+        argocd.argoproj.io/sync-wave: "5"
       finalizers:
         - resources-finalizer.argocd.argoproj.io
       project: observability
@@ -161,7 +198,7 @@ argocd-apps:
     prometheus:
       namespace: argocd
       additionalAnnotations:
-        argocd.argoproj.io/sync-wave: "1"
+        argocd.argoproj.io/sync-wave: "5"
       finalizers:
         - resources-finalizer.argocd.argoproj.io
       project: observability
@@ -188,7 +225,7 @@ argocd-apps:
     alloy:
       namespace: argocd
       additionalAnnotations:
-        argocd.argoproj.io/sync-wave: "2"
+        argocd.argoproj.io/sync-wave: "5"
       finalizers:
         - resources-finalizer.argocd.argoproj.io
       project: observability
@@ -214,11 +251,10 @@ argocd-apps:
         automated:
           prune: true
           selfHeal: true
-
     grafana:
       namespace: argocd
       additionalAnnotations:
-        argocd.argoproj.io/sync-wave: "3"
+        argocd.argoproj.io/sync-wave: "5"
       finalizers:
         - resources-finalizer.argocd.argoproj.io
       project: observability

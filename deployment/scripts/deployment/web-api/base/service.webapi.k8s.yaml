@@ -6,6 +6,7 @@ metadata:
     app: nagp-ecom-api
     type: api
     stack: nagp-ecom-api
+  namespace: nagp-ecom
 spec:
   type: ClusterIP
   ports:

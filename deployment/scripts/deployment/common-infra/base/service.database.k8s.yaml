@@ -6,6 +6,7 @@ metadata:
     app: postgres
     type: database
     stack: nagp-ecom-api
+  namespace: nagp-ecom
 spec:
   type: ClusterIP
   clusterIP: None
