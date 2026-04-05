@@ -4,6 +4,6 @@ metadata:
   name: identity-api-config
   namespace: nagp-ecom
 data:
-  HOSTNAME: "nagp-ecom.duckdns.org"
+  HOSTNAME: "https://nagp-ecom.duckdns.org"
   GOOGLE_CALLBACK_URI: "https://nagp-ecom.duckdns.org/api/auth/google/callback"
   POST_CALLBACK_BASE_URL: "https://nagp-ecom.duckdns.org"
