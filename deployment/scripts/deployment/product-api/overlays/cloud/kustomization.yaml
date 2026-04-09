@@ -1,0 +1,16 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+commonAnnotations:
+  deployment.environment: cloud
+
+images:
+  - name: nagp-ecom-product-migration
+    newName: docker.io/ankurmathur01nagarro/nagp-ecom-product-migration
+    newTag: 0.0.1
+  - name: nagp-ecom-productapi
+    newName: docker.io/ankurmathur01nagarro/nagp-ecom-productapi
+    newTag: 0.0.1

@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nagp-ecom-productapi
+  labels:
+    app: nagp-ecom-productapi
+    type: api
+    stack: nagp-ecom-api
+  namespace: nagp-ecom
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nagp-ecom-productapi
+      stack: nagp-ecom-api
+  template:
+    metadata:
+      labels:
+        app: nagp-ecom-productapi
+        type: api
+        stack: nagp-ecom-api
+    spec:
+      initContainers:
+        - name: migration
+          image: nagp-ecom-product-migration
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: Kubernetes
+            - name: POSTGRES_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: secrets-nagp
+                  key: POSTGRES_USERNAME
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: secrets-nagp
+                  key: POSTGRES_PASSWORD
+            - name: ConnectionStrings__Default
+              value: "Host=postgres;Port=5432;Database=productdb;Username=$(POSTGRES_USERNAME);Password=$(POSTGRES_PASSWORD)"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://alloy.observability.svc.cluster.local:4317"
+            - name: OTEL_SERVICE_NAME
+              value: "ecom-product-migration-job"
+      containers:
+        - name: nagp-ecom-productapi
+          image: nagp-ecom-productapi
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: Kubernetes
+            - name: POSTGRES_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: secrets-nagp
+                  key: POSTGRES_USERNAME
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: secrets-nagp
+                  key: POSTGRES_PASSWORD
+            - name: ConnectionStrings__Default
+              value: "Host=postgres;Port=5432;Database=productdb;Username=$(POSTGRES_USERNAME);Password=$(POSTGRES_PASSWORD)"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://alloy.observability.svc.cluster.local:4317"
+            - name: OTEL_SERVICE_NAME
+              value: "ecom-product-api"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi

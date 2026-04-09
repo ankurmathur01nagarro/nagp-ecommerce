@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/nagp-casestudy/src/**)",
+      "Bash(find /c/nagp-casestudy/src/api -name \"*.csproj\" -exec grep -l \"OpenIddict\" {} \\\\;)"
+    ]
+  }
+}

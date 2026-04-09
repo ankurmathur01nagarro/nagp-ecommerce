@@ -15,7 +15,10 @@
       "Bash(curl -s -v -L --max-redirs 3 \"http://localhost:5001/api/auth/external/challenge\")",
       "Bash(curl -s -X POST http://localhost:5000/connect/token -H 'Content-Type: application/x-www-form-urlencoded' -d 'grant_type=authorization_code&code=test&redirect_uri=http://localhost:5001/api/auth/external/complete&client_id=ecom-api&client_secret=wrong')",
       "Bash(curl -s -X POST http://localhost:5000/connect/token -H 'Content-Type: application/x-www-form-urlencoded' -d 'grant_type=authorization_code&code=fake_code&redirect_uri=http%3A%2F%2Flocalhost%3A5001%2Fapi%2Fauth%2Fexternal%2Fcomplete&client_id=ecom-api&client_secret=9f8a7b6c-5d4e-3f2a-1b0c-9d8e7f6a5b4c')",
-      "Bash(curl -s -v \"http://localhost:5000/connect/authorize?client_id=ecom-api&response_type=code&scope=api&redirect_uri=http%3A%2F%2Flocalhost%3A5001%2Fapi%2Fauth%2Fexternal%2Fcomplete&state=/\")"
+      "Bash(curl -s -v \"http://localhost:5000/connect/authorize?client_id=ecom-api&response_type=code&scope=api&redirect_uri=http%3A%2F%2Flocalhost%3A5001%2Fapi%2Fauth%2Fexternal%2Fcomplete&state=/\")",
+      "Bash(dotnet package:*)",
+      "Read(//c/nagp-casestudy/**)",
+      "Bash(ls c:/nagp-casestudy/src/api/*.sln)"
     ]
   }
 }
