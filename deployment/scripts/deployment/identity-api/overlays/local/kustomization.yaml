@@ -10,4 +10,4 @@ commonAnnotations:
 images:
 - name: nagp-ecom-identity-api
   newName: docker.io/ankurmathur01nagarro/nagp-ecom-identity-api
-  newTag: 31bfbde460fd0da9a1281d963ebaf15ed67ad953
+  newTag: 893326e8343b8f6b1f008eaf7a1d6b1582e31544
