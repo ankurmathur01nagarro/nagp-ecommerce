@@ -71,6 +71,10 @@ spec:
                 secretKeyRef:
                   name: identity-api-secrets
                   key: ECOMAPI_CLIENT_SECRET
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://alloy.observability.svc.cluster.local:4317"
+            - name: OTEL_SERVICE_NAME
+              value: "ecom-identity-api"
           resources:
             requests:
               cpu: 100m

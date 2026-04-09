@@ -4,9 +4,38 @@ using ECOM.WebApi.Data;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using OpenIddict.Validation.AspNetCore;
+using OpenTelemetry;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// OpenTelemetry — tracing, metrics, logging via OTLP
+builder.Logging.AddOpenTelemetry(logging =>
+{
+    logging.IncludeFormattedMessage = true;
+    logging.IncludeScopes = true;
+});
+
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(resource => resource
+        .AddService(serviceName: "ecom-web-api"))
+    .WithTracing(tracing =>
+    {
+        tracing.AddAspNetCoreInstrumentation();
+        tracing.AddHttpClientInstrumentation();
+    })
+    .WithMetrics(metrics =>
+    {
+        metrics.AddAspNetCoreInstrumentation();
+        metrics.AddHttpClientInstrumentation();
+        metrics.AddRuntimeInstrumentation();
+        metrics.AddMeter("Microsoft.AspNetCore.Hosting");
+        metrics.AddMeter("Microsoft.AspNetCore.Server.Kestrel");
+    })
+    .UseOtlpExporter();
 
 var corsConfig = builder.Configuration.GetSection("Cors");
 var corsEnabled = corsConfig.GetValue<bool>("Enabled");

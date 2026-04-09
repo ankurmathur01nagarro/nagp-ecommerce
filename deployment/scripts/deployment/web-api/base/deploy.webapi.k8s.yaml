@@ -38,6 +38,10 @@ spec:
                   key: POSTGRES_PASSWORD
             - name: ConnectionStrings__Default
               value: "Host=postgres;Port=5432;Database=ecomdb;Username=$(POSTGRES_USERNAME);Password=$(POSTGRES_PASSWORD)"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://alloy.observability.svc.cluster.local:4317"
+            - name: OTEL_SERVICE_NAME
+              value: "ecom-migration-job"
       containers:
         - name: nagp-ecom-api
           image: nagp-ecom-webapi
@@ -69,6 +73,10 @@ spec:
                 configMapKeyRef:
                   name: identity-api-config
                   key: HOSTNAME
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://alloy.observability.svc.cluster.local:4317"
+            - name: OTEL_SERVICE_NAME
+              value: "ecom-web-api"
           resources:
             requests:
               cpu: 100m
