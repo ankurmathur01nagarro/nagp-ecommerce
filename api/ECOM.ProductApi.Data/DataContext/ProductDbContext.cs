@@ -11,6 +11,17 @@ public class ProductDbContext(DbContextOptions<ProductDbContext> options)
 {
     public DbSet<Product> Products { get; set; }
     public DbSet<ProductCategory> ProductCategories { get; set; }
+    public DbSet<Brand> Brands { get; set; }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Product>(entity =>
+        {
+            entity.HasIndex(p => p.Sku).IsUnique();
+            entity.HasIndex(p => p.CategoryId);
+            entity.HasIndex(p => p.BrandId);
+        });
+    }
 }
 
 public static class StartupExtensions

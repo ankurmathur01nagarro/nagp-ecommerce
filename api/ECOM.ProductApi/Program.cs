@@ -1,4 +1,6 @@
 using ECOM.ProductApi.Data;
+using ECOM.ProductApi.Data.Repositories;
+using Npgsql;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -46,6 +48,10 @@ builder.Services.AddOpenTelemetry()
 builder.Services.AddOpenApi();
 builder.Services.AddControllers();
 builder.RegisterDatabaseServices();
+
+// NpgsqlDataSource for Dapper raw queries (JSONB)
+builder.Services.AddSingleton(NpgsqlDataSource.Create(builder.Configuration.GetConnectionString("Default")!));
+builder.Services.AddScoped<IProductRepository, ProductRepository>();
 
 var app = builder.Build();
 
