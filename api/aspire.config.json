@@ -1,5 +1,5 @@
 {
-  "appHost": {
-    "path": "apphost.cs"
-  }
+    "appHost": {
+        "path": "..\\apphost.cs"
+    }
 }
