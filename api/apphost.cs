@@ -16,6 +16,7 @@ var postgres = builder.AddPostgres("postgres")
 
 var ecomDb = postgres.AddDatabase("ecomdb");
 var productDb = postgres.AddDatabase("productdb");
+var inventoryDb = postgres.AddDatabase("inventorydb");
 
 // Migration jobs run to completion before APIs start
 var ecomMigrations = builder.AddProject("ecom-webapi-migrations", "ECOM.WebApi.MigrationJob/ECOM.WebApi.MigrationJob.csproj")
@@ -25,6 +26,10 @@ var ecomMigrations = builder.AddProject("ecom-webapi-migrations", "ECOM.WebApi.M
 var productMigrations = builder.AddProject("ecom-productapi-migrations", "ECOM.ProductApi.MigrationJob/ECOM.ProductApi.MigrationJob.csproj")
     .WithReference(productDb)
     .WaitFor(productDb);
+
+var inventoryMigrations = builder.AddProject("ecom-inventoryapi-migrations", "ECOM.InventoryApi.MigrationJob/ECOM.InventoryApi.MigrationJob.csproj")
+    .WithReference(inventoryDb)
+    .WaitFor(inventoryDb);
 
 // Identity API (OpenIddict authorization server)
 var identityApi = builder.AddProject("ecom-identity-api", "ECOM.Identity.Api/ECOM.Identity.Api.csproj")
@@ -46,5 +51,10 @@ builder.AddProject("ecom-web-api", "ECOM.WebApi/ECOM.WebApi.csproj")
 builder.AddProject("ecom-product-api", "ECOM.ProductApi/ECOM.ProductApi.csproj")
     .WithReference(productDb)
     .WaitForCompletion(productMigrations);
+
+// Inventory API (stock, offers, user cart)
+builder.AddProject("ecom-inventory-api", "ECOM.InventoryApi/ECOM.InventoryApi.csproj")
+    .WithReference(inventoryDb)
+    .WaitForCompletion(inventoryMigrations);
 
 builder.Build().Run();

@@ -42,6 +42,16 @@ jobs:
       run: |
         cd ./api/ECOM.ProductApi.MigrationJob
         dotnet build --restore
+    - name: Build Inventory API
+      shell: 'pwsh'
+      run: |
+        cd ./api/ECOM.InventoryApi
+        dotnet build --restore
+    - name: Build Inventory Database Migration
+      shell: 'pwsh'
+      run: |
+        cd ./api/ECOM.InventoryApi.MigrationJob
+        dotnet build --restore
   
   build-container-images:
     needs: build-and-test
@@ -95,6 +105,22 @@ jobs:
         context: ./api
         file: ./api/Dockerfile.product-migration
         tags: docker.io/ankurmathur01nagarro/nagp-ecom-product-migration:${{ env.image_tag }},docker.io/ankurmathur01nagarro/nagp-ecom-product-migration:latest
+
+    - name: Build and push Inventory API Docker images
+      uses: docker/build-push-action@v7.0.0
+      with:
+        push: true
+        context: ./api
+        file: ./api/Dockerfile.inventory
+        tags: docker.io/ankurmathur01nagarro/nagp-ecom-inventoryapi:${{ env.image_tag }},docker.io/ankurmathur01nagarro/nagp-ecom-inventoryapi:latest
+
+    - name: Build and push Inventory Migration Docker images
+      uses: docker/build-push-action@v7.0.0
+      with:
+        push: true
+        context: ./api
+        file: ./api/Dockerfile.inventory-migration
+        tags: docker.io/ankurmathur01nagarro/nagp-ecom-inventory-migration:${{ env.image_tag }},docker.io/ankurmathur01nagarro/nagp-ecom-inventory-migration:latest
   release:
     needs: build-container-images
     permissions:
@@ -121,6 +147,11 @@ jobs:
         Push-Location
         cd product-api/overlays/local
         kustomize edit set image nagp-ecom-product-migration=*:${{ env.image_tag }} nagp-ecom-productapi=*:${{ env.image_tag }}
+        Pop-Location
+
+        Push-Location
+        cd inventory-api/overlays/local
+        kustomize edit set image nagp-ecom-inventory-migration=*:${{ env.image_tag }} nagp-ecom-inventoryapi=*:${{ env.image_tag }}
         Pop-Location
 
         git config user.name "github-actions[bot]"

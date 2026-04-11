@@ -18,7 +18,15 @@
       "Bash(curl -s -v \"http://localhost:5000/connect/authorize?client_id=ecom-api&response_type=code&scope=api&redirect_uri=http%3A%2F%2Flocalhost%3A5001%2Fapi%2Fauth%2Fexternal%2Fcomplete&state=/\")",
       "Bash(dotnet package:*)",
       "Read(//c/nagp-casestudy/**)",
-      "Bash(ls c:/nagp-casestudy/src/api/*.sln)"
+      "Bash(ls c:/nagp-casestudy/src/api/*.sln)",
+      "Bash(dotnet sln:*)"
+    ],
+    "additionalDirectories": [
+      "c:\\nagp-casestudy\\src\\deployment\\scripts\\deployment\\inventory-api\\base",
+      "c:\\nagp-casestudy\\src\\deployment\\scripts\\deployment\\inventory-api\\overlays\\local",
+      "c:\\nagp-casestudy\\src\\deployment\\scripts\\deployment\\inventory-api\\overlays\\cloud",
+      "c:\\nagp-casestudy\\src\\deployment\\scripts\\apps",
+      "c:\\nagp-casestudy\\src\\.github\\workflows"
     ]
   }
 }
