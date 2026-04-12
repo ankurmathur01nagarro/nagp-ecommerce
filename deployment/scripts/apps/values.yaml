@@ -126,6 +126,26 @@ argocd-apps:
         automated:
           prune: true
           selfHeal: true
+    imgproxy:
+      namespace: argocd
+      additionalAnnotations:
+        argocd.argoproj.io/sync-wave: "4"
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+      project: nagp-ecom
+      source:
+        repoURL: https://github.com/ankurmathur01nagarro/nagp-ecommerce
+        targetRevision: HEAD
+        path: deployment/scripts/deployment/imgproxy/overlays/local
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: nagp-ecom
+      syncPolicy:
+        syncOptions:
+          - CreateNamespace=true
+        automated:
+          prune: true
+          selfHeal: true
     nagp-ecom-api:
       namespace: argocd
       additionalAnnotations:

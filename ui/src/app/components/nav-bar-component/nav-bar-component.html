@@ -106,14 +106,14 @@
 <!-- main menu begin -->
 <div App-NavMenu>
   <li App-NavItem label="Home" link="/" icon="icon-home"></li>
-  <li App-NavItem label="Categories" link="/categories" icon="icon-bag">
+  <li App-NavItem label="Categories" link="/catalog" icon="icon-bag">
     <div App-SubMenu>
       @for (item of this.productCategories(); track $index) {
-        <li App-NavItem [label]="item.name" link="/categories/{{item.id}}" icon="icon-bag">
+        <li App-NavItem [label]="item.name" link="/catalog/{{item.id}}" icon="icon-bag">
           @if (item.subcategories.length > 0) {
             <div App-SubMenu>
               @for (subItem of item.subcategories; track $index) {
-                <li App-NavItem [label]="subItem.name" link="/categories/{{subItem.id}}" icon="icon-bag"></li>
+                <li App-NavItem [label]="subItem.name" link="/catalog/{{subItem.id}}" icon="icon-bag"></li>
               }
             </div>
           }
