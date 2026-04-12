@@ -10,7 +10,7 @@ commonAnnotations:
 images:
 - name: nagp-ecom-inventory-migration
   newName: docker.io/ankurmathur01nagarro/nagp-ecom-inventory-migration
-  newTag: c9c5ab5635fac8d7aeb6315ee76fd2e2698d3ad2
+  newTag: 1965cf886beaea5954c7521d066fde22b64f3ec3
 - name: nagp-ecom-inventoryapi
   newName: docker.io/ankurmathur01nagarro/nagp-ecom-inventoryapi
-  newTag: c9c5ab5635fac8d7aeb6315ee76fd2e2698d3ad2
+  newTag: 1965cf886beaea5954c7521d066fde22b64f3ec3
