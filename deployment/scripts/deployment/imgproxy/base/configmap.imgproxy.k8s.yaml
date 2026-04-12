@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nagp-ecom-imgproxy-config
+  labels:
+    app: nagp-ecom-imgproxy
+    type: media
+    stack: nagp-ecom-api
+  namespace: nagp-ecom
+data:
+  # Server
+  IMGPROXY_BIND: ":8080"
+  IMGPROXY_LOG_LEVEL: "warn"
+
+  # Local filesystem source — images are read from the shared PVC
+  IMGPROXY_LOCAL_FILESYSTEM_ROOT: "/images"
+
+  # Remote sources — allow fetching from Pexels for seeded product images
+  IMGPROXY_ALLOWED_SOURCES: "local://,https://images.pexels.com/"
+
+  # Image processing defaults
+  IMGPROXY_MAX_SRC_RESOLUTION: "25"
+  IMGPROXY_JPEG_PROGRESSIVE: "true"
+  IMGPROXY_WEBP_COMPRESSION: "80"
+  IMGPROXY_FORMAT_QUALITY: "jpeg=85,webp=80,avif=60"
+  IMGPROXY_ENABLE_WEBP_DETECTION: "true"
+  IMGPROXY_AUTO_ROTATE: "true"
+  IMGPROXY_STRIP_METADATA: "true"
+
+  # Observability — Prometheus metrics on a dedicated port; OTel traces/metrics enabled
+  IMGPROXY_PROMETHEUS_BIND: ":8081"
+  IMGPROXY_OPEN_TELEMETRY_ENABLE: "true"
+  IMGPROXY_OPEN_TELEMETRY_ENABLE_METRICS: "true"

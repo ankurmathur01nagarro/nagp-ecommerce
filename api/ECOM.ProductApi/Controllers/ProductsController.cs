@@ -29,12 +29,13 @@ public class ProductsController(IProductRepository repository) : ControllerBase
         [FromQuery] string? category = null,
         [FromQuery] string? brand = null,
         [FromQuery] string? tag = null,
+        [FromQuery] string? gender = null,
         CancellationToken ct = default)
     {
         if (page < 1) page = 1;
         if (pageSize is < 1 or > 100) pageSize = 20;
 
-        var (items, totalCount) = await repository.GetListAsync(page, pageSize, category, brand, tag, ct);
+        var (items, totalCount) = await repository.GetListAsync(page, pageSize, category, brand, tag, gender, ct);
 
         return Ok(new ProductListResponse(
             items.Select(MapToResponse).ToList(),
@@ -56,7 +57,8 @@ public class ProductsController(IProductRepository repository) : ControllerBase
             Price = request.Price,
             CategoryId = request.CategoryId,
             BrandId = request.BrandId,
-            Images = request.Images is not null ? JsonSerializer.Serialize(request.Images, JsonDefaults.CamelCase) : null,
+            Gender = request.Gender,
+            Images = request.Images is not null ? JsonSerializer.Serialize(AssignMissingImageIds(request.Images), JsonDefaults.CamelCase) : null,
             Metadata = request.Metadata is not null ? JsonSerializer.Serialize(request.Metadata, JsonDefaults.CamelCase) : null,
             CreatedAt = now,
             UpdatedAt = now
@@ -82,7 +84,8 @@ public class ProductsController(IProductRepository repository) : ControllerBase
         existing.Price = request.Price;
         existing.CategoryId = request.CategoryId;
         existing.BrandId = request.BrandId;
-        existing.Images = request.Images is not null ? JsonSerializer.Serialize(request.Images, JsonDefaults.CamelCase) : null;
+        existing.Gender = request.Gender;
+        existing.Images = request.Images is not null ? JsonSerializer.Serialize(AssignMissingImageIds(request.Images), JsonDefaults.CamelCase) : null;
         existing.Metadata = request.Metadata is not null ? JsonSerializer.Serialize(request.Metadata, JsonDefaults.CamelCase) : null;
         existing.UpdatedAt = DateTimeOffset.UtcNow;
 
@@ -102,6 +105,14 @@ public class ProductsController(IProductRepository repository) : ControllerBase
         return NoContent();
     }
 
+    private static List<ProductImage> AssignMissingImageIds(List<ProductImage> images)
+    {
+        foreach (var img in images)
+            if (img.Id == Guid.Empty)
+                img.Id = Guid.NewGuid();
+        return images;
+    }
+
     private static ProductResponse MapToResponse(Product p) => new(
         p.Id,
         p.Name,
@@ -113,6 +124,7 @@ public class ProductsController(IProductRepository repository) : ControllerBase
         p.Category?.Name,
         p.BrandId,
         p.Brand?.Name,
+        p.Gender,
         p.Images is not null ? JsonSerializer.Deserialize<List<ProductImage>>(p.Images, JsonDefaults.CamelCase) : null,
         p.Metadata is not null ? JsonSerializer.Deserialize<ProductMetadata>(p.Metadata, JsonDefaults.CamelCase) : null,
         p.CreatedAt,

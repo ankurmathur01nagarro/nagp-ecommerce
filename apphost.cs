@@ -6,6 +6,12 @@
 
 var builder = DistributedApplication.CreateBuilder(args);
 var p_postgresPassword = builder.AddParameter("POSTGRES-PASSWORD", true);
+
+// Shared images directory — product-api writes here, imgproxy reads from here.
+// In local dev this is a plain folder; in k8s both pods mount the same PVC.
+var imagesPath = Path.Combine(builder.AppHostDirectory, ".local-images");
+Directory.CreateDirectory(imagesPath);
+
 var p_googleClientId = builder.AddParameter("GOOGLE-CLIENT-ID", "283920841631-er35ovfc4fsmapnoarrlv6i32b6fj9f9.apps.googleusercontent.com", false, true);
 var p_googleClientSecret = builder.AddParameter("GOOGLE-CLIENT-SECRET", true);
 var p_ecomApiClientSecret = builder.AddParameter("ECOMAPI-CLIENT-SECRET", true);
@@ -28,11 +34,11 @@ var ecomMigrations = builder.AddProject("ecom-webapi-migrations", "api/ECOM.WebA
     .WaitFor(ecomDb);
 
 var productMigrations = builder.AddProject("ecom-productapi-migrations", "api/ECOM.ProductApi.MigrationJob/ECOM.ProductApi.MigrationJob.csproj")
-    .WithReference(productDb)
+    .WithReference(productDb, "Default")
     .WaitFor(productDb);
 
 var inventoryMigrations = builder.AddProject("ecom-inventoryapi-migrations", "api/ECOM.InventoryApi.MigrationJob/ECOM.InventoryApi.MigrationJob.csproj")
-    .WithReference(inventoryDb)
+    .WithReference(inventoryDb, "Default")
     .WaitFor(inventoryDb);
 
 // Identity API (OpenIddict authorization server)
@@ -49,28 +55,43 @@ var ui = builder.AddJavaScriptApp("ecom-web-app", "ui")
     .WithNpm()
     .WithExternalHttpEndpoints();
 
+// imgproxy — on-the-fly image resizing; reads from the shared images directory
+var imgproxy = builder.AddContainer("ecom-imgproxy", "darthsim/imgproxy", "v3")
+    .WithHttpEndpoint(9001, targetPort: 8080, name: "http")
+    .WithBindMount(imagesPath, "/images", isReadOnly: true)
+    .WithEnvironment("IMGPROXY_LOCAL_FILESYSTEM_ROOT", "/images")
+    .WithEnvironment("IMGPROXY_ALLOWED_SOURCES", "local://,https://images.pexels.com/")
+    .WithEnvironment("IMGPROXY_DEVELOPMENT_ERRORS_MODE", "true")
+    .WithEnvironment("IMGPROXY_LOG_LEVEL", "debug");
+
+// Product API (declared first so WebApi can reference it)
+var productApi = builder.AddProject("ecom-product-api", "api/ECOM.ProductApi/ECOM.ProductApi.csproj")
+    .WithReference(productDb, "Default")
+    .WithEnvironment("Storage__LocalRoot", imagesPath)
+    .WaitForCompletion(productMigrations);
+
 // Main Web API (depends on Identity for token issuance)
-var webApi = builder.AddProject(
+builder.AddProject(
         "ecom-web-api",
         "api/ECOM.WebApi/ECOM.WebApi.csproj",
         "https")
     .WithReference(ecomDb, "Default")
     .WithReference(identityApi)
+    .WithReference(productApi)
     .WithEnvironment("IdentityApi__ClientSecret", p_ecomApiClientSecret)
     .WithEnvironment("ReverseProxy__Clusters__ui__Destinations__primary__Address", ui.GetEndpoint("http"))
     .WithEnvironment("ReverseProxy__Clusters__identity__Destinations__primary__Address", identityApi.GetEndpoint("http"))
+    .WithEnvironment("ImageProxy__BaseUrl", imgproxy.GetEndpoint("http"))
+    .WithEnvironment("ProductApi__BaseUrl", productApi.GetEndpoint("http"))
     .WithDeveloperCertificateTrust(true)
     .WaitForCompletion(ecomMigrations)
-    .WaitFor(identityApi);
-
-// Product API
-builder.AddProject("ecom-product-api", "api/ECOM.ProductApi/ECOM.ProductApi.csproj")
-    .WithReference(productDb)
-    .WaitForCompletion(productMigrations);
+    .WaitFor(identityApi)
+    .WaitFor(imgproxy)
+    .WaitFor(productApi);
 
 // Inventory API (stock, offers, user cart)
 builder.AddProject("ecom-inventory-api", "api/ECOM.InventoryApi/ECOM.InventoryApi.csproj")
-    .WithReference(inventoryDb)
+    .WithReference(inventoryDb, "Default")
     .WaitForCompletion(inventoryMigrations);
 
 builder.Build().Run();

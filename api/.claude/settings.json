@@ -4,7 +4,32 @@
       "WebSearch",
       "WebFetch(domain:documentation.openiddict.com)",
       "WebFetch(domain:github.com)",
-      "WebFetch(domain:gist.github.com)"
+      "WebFetch(domain:gist.github.com)",
+      "Bash(curl -s http://localhost:9999/Template/product-page.html)",
+      "WebFetch(domain:www.levi.com)",
+      "WebFetch(domain:www.kohls.com)",
+      "WebFetch(domain:www.murdochs.com)",
+      "WebFetch(domain:north40.com)",
+      "WebFetch(domain:www.pexels.com)",
+      "WebFetch(domain:www.amazon.com)",
+      "Bash(curl -s http://localhost:9999/Template/home-1-clothes.html)",
+      "Bash(grep -n \"452212\\\\|Img\\(\\\\|CategoryId\\\\|BrandId\\\\|{$\\\\|^}\" \"ECOM.ProductApi.Data/Migrations/20260411140000_SeedAllProducts.cs\")",
+      "Bash(grep -E \"^\\\\s+\\\\{$\" \"ECOM.ProductApi.Data/Migrations/20260411140000_SeedAllProducts.cs\")",
+      "Bash(grep -oE '\"[A-Z]{2,3}-[A-Z]+-[MW]-[0-9]{3}\"' \"ECOM.ProductApi.Data/Migrations/20260411140000_SeedAllProducts.cs\")",
+      "Bash(awk -F', ' '{print \"catId=\"$2, \"brandId=\"$3}')",
+      "Bash(awk -F', ' '{print $2}')",
+      "Bash(awk -F'[,\\(]' '{print NR\": \"$0}')",
+      "Bash(git -C c:\\\\nagp-casestudy\\\\src status --short)"
+    ],
+    "additionalDirectories": [
+      "c:\\nagp-casestudy\\src\\deployment\\scripts\\deployment\\minio\\base",
+      "c:\\nagp-casestudy\\src\\deployment\\scripts\\deployment\\minio\\overlays\\local",
+      "c:\\nagp-casestudy\\src\\deployment\\scripts\\deployment\\minio\\overlays\\cloud",
+      "c:\\nagp-casestudy\\src\\deployment\\scripts\\deployment\\imgproxy\\base",
+      "c:\\nagp-casestudy\\src\\deployment\\scripts\\deployment\\imgproxy\\overlays\\local",
+      "c:\\nagp-casestudy\\src\\deployment\\scripts\\deployment\\imgproxy\\overlays\\cloud",
+      "c:\\nagp-casestudy\\src\\deployment\\scripts\\deployment\\common-infra\\base",
+      "c:\\nagp-casestudy\\src\\deployment\\scripts\\deployment\\product-api\\base"
     ]
   }
 }

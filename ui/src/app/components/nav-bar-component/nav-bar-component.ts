@@ -1,15 +1,21 @@
-import { Component, ElementRef, forwardRef, input, viewChild, contentChildren, contentChild, signal, computed, afterRenderEffect, afterNextRender } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  input,
+  viewChild,
+  contentChildren,
+  contentChild,
+  signal,
+  computed,
+  afterRenderEffect,
+  afterNextRender,
+  effect,
+  inject,
+} from '@angular/core';
+
 import { NgTemplateOutlet } from "@angular/common";
-
-@Component({
-  selector: 'App-NavBar',
-  templateUrl: './nav-bar-component.html',
-  styleUrl: './nav-bar-component.css',
-  imports: [forwardRef(() => NavMenu), forwardRef(() => NavItem), forwardRef(() => SubMenu), forwardRef(() => CustomSubMenu), forwardRef(() => SubMenuColumn)],
-})
-export class NavBarComponent {
-
-}
+import { Category, WebApiService } from '@app/services/web-api-service';
+import { lastValueFrom } from 'rxjs';
 
 @Component({
   selector: 'div[App-NavMenu]',
@@ -174,4 +180,26 @@ export class SubMenuColumn {
   columnSize = computed(() => `col-xs-${this.size()}`);
 
   items = contentChildren(NavItem);
+}
+
+@Component({
+  selector: 'App-NavBar',
+  templateUrl: './nav-bar-component.html',
+  styleUrl: './nav-bar-component.css',
+  imports: [NavMenu, NavItem, SubMenu, CustomSubMenu, SubMenuColumn],
+})
+export class NavBarComponent {
+  webApiService: WebApiService = inject(WebApiService);
+  productCategories = signal<Category[]>([]);
+
+  constructor() {
+    this.fetchCategories();
+  }
+
+  async fetchCategories() {
+    const categories$ = await lastValueFrom(this.webApiService.getCategories());
+    const relevantCategories = categories$[0].subcategories; // Assuming the first category is the one we want
+    const sortedCategories = relevantCategories.sort((a, b) => a.name.localeCompare(b.name));
+    this.productCategories.set(sortedCategories);
+  }
 }

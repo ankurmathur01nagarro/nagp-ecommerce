@@ -13,6 +13,7 @@ public record ProductResponse(
     string? CategoryName,
     int BrandId,
     string? BrandName,
+    string? Gender,
     List<ProductImage>? Images,
     ProductMetadata? Metadata,
     DateTimeOffset CreatedAt,

@@ -4,3 +4,4 @@ kind: Kustomization
 resources:
   - deploy.product-api.k8s.yaml
   - service.product-api.k8s.yaml
+  - pvc.product-images.k8s.yaml

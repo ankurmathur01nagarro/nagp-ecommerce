@@ -7,6 +7,9 @@ resources:
 commonAnnotations:
   deployment.environment: cloud
 
+patches:
+  - path: patch.pvc.product-images.cloud.yaml
+
 images:
   - name: nagp-ecom-product-migration
     newName: docker.io/ankurmathur01nagarro/nagp-ecom-product-migration

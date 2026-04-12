@@ -1,6 +1,8 @@
+using System.Text;
 using System.Threading.RateLimiting;
 using ECOM.WebApi.Auth;
 using ECOM.WebApi.Data;
+using ECOM.WebApi.Infrastructure;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using OpenIddict.Validation.AspNetCore;
@@ -83,10 +85,24 @@ builder.Services.AddOpenIddict()
 builder.Services.AddAuthentication(OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme);
 builder.Services.AddAuthorization();
 
-// YARP — proxies the two browser-facing Identity API paths so the browser never needs to
-// reach the Identity API directly. No ingress rule changes required.
+// YARP — proxies the browser-facing Identity API paths.
 builder.Services.AddReverseProxy()
     .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
+
+// HybridCache — L1 in-process memory cache (no secondary store).
+// Used by ImageLookupService to cache ProductApi image-record lookups.
+builder.Services.AddHybridCache();
+
+// HttpClient for ProductApi (image catalog lookup) and imgproxy (image transforms)
+builder.Services.AddHttpClient("product-api", client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["ProductApi:BaseUrl"]!);
+});
+builder.Services.AddHttpClient("imgproxy", client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["ImageProxy:BaseUrl"]!);
+});
+builder.Services.AddSingleton<IImageLookupService, ImageLookupService>();
 
 // Trust X-Forwarded-* headers from the ingress controller so Request.Host / Scheme
 // reflect the public-facing hostname rather than the internal pod address.
@@ -143,6 +159,41 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.MapReverseProxy();
+
+// Image proxy endpoint — resolves a stable image GUID to its source URL (via HybridCache →
+// ProductApi), applies optional client-requested imgproxy transformations, and streams the result.
+app.MapGet("/images/{id:guid}", async (HttpContext ctx, Guid id, IImageLookupService lookup,
+    IHttpClientFactory factory, CancellationToken ct) =>
+{
+    var record = await lookup.GetAsync(id, ct);
+    if (record is null)
+    {
+        ctx.Response.StatusCode = StatusCodes.Status404NotFound;
+        return;
+    }
+
+    var q = ctx.Request.Query;
+    var w = q["w"].FirstOrDefault() ?? "0";
+    var h = q["h"].FirstOrDefault() ?? "0";
+    var fit = q["fit"].FirstOrDefault() ?? "fill";
+    var format = q["format"].FirstOrDefault() ?? "webp";
+    var gravity = q["g"].FirstOrDefault();
+
+    var opts = new StringBuilder();
+    if (w != "0" || h != "0") opts.Append($"rs:{fit}:{w}:{h}/");
+    if (!string.IsNullOrEmpty(gravity)) opts.Append($"g:{gravity}/");
+
+    var encodedSrc = Uri.EscapeDataString(record.Url);
+    var imgproxyPath = $"/unsafe/{opts}plain/{encodedSrc}@{format}";
+
+    var client = factory.CreateClient("imgproxy");
+    using var upstream = await client.GetAsync(imgproxyPath, HttpCompletionOption.ResponseHeadersRead, ct);
+
+    ctx.Response.StatusCode = (int)upstream.StatusCode;
+    ctx.Response.Headers.CacheControl = "public, max-age=86400, immutable";
+    ctx.Response.ContentType = upstream.Content.Headers.ContentType?.ToString() ?? "image/webp";
+    await upstream.Content.CopyToAsync(ctx.Response.Body, ct);
+});
 
 // Serve Angular static files (wwwroot populated by the unified Dockerfile).
 // UseStaticFiles handles hashed asset files (JS/CSS) with far-future cache headers;

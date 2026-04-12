@@ -26,7 +26,11 @@
       "c:\\nagp-casestudy\\src\\deployment\\scripts\\deployment\\inventory-api\\overlays\\local",
       "c:\\nagp-casestudy\\src\\deployment\\scripts\\deployment\\inventory-api\\overlays\\cloud",
       "c:\\nagp-casestudy\\src\\deployment\\scripts\\apps",
-      "c:\\nagp-casestudy\\src\\.github\\workflows"
+      "c:\\nagp-casestudy\\src\\.github\\workflows",
+      "c:\\nagp-casestudy\\src\\deployment\\scripts\\deployment\\wsrv\\base",
+      "c:\\nagp-casestudy\\src\\deployment\\scripts\\deployment\\wsrv\\overlays\\local",
+      "c:\\nagp-casestudy\\src\\deployment\\scripts\\deployment\\wsrv\\overlays\\cloud",
+      "c:\\nagp-casestudy\\src\\deployment\\scripts\\deployment\\imgproxy"
     ]
   }
 }

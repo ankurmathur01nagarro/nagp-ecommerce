@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using ECOM.ProductApi.Data.DataModels;
 
 namespace ECOM.ProductApi.Dtos;
@@ -10,5 +11,6 @@ public record UpdateProductRequest(
     decimal Price,
     int CategoryId,
     int BrandId,
+    [AllowedValues("Men", "Women", "Unisex", null)] string? Gender,
     List<ProductImage>? Images,
     ProductMetadata? Metadata);

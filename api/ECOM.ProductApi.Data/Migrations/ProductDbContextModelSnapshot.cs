@@ -64,6 +64,10 @@ namespace ECOM.ProductApi.Data.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("text");
 
+                    b.Property<string>("Gender")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
                     b.Property<string>("Images")
                         .HasColumnType("jsonb");
 

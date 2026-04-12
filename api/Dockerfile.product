@@ -9,6 +9,9 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /App
 COPY --from=build /App/out .
 
+# Default mount point for the local-storage PVC
+RUN mkdir -p /app/images
+
 EXPOSE 8080
 
 ENTRYPOINT ["dotnet", "ECOM.ProductApi.dll"]

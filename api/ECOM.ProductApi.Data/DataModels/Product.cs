@@ -35,6 +35,10 @@ public class Product
     [Column(TypeName = "jsonb")]
     public string? Metadata { get; set; }
 
+    /// <summary>"Men" | "Women" | "Unisex"</summary>
+    [MaxLength(20)]
+    public string? Gender { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; }
 
     public DateTimeOffset UpdatedAt { get; set; }

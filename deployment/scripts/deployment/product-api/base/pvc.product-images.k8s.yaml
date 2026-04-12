@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-product-images
+  labels:
+    app: nagp-ecom-productapi
+    type: pvc
+    stack: nagp-ecom-api
+  namespace: nagp-ecom
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: sc-shared
+  volumeMode: Filesystem
+  resources:
+    requests:
+      storage: 5Gi

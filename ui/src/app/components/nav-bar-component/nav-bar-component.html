@@ -105,17 +105,20 @@
 <!-- header bar end -->
 <!-- main menu begin -->
 <div App-NavMenu>
-  <li App-NavItem label="Home" link="#" icon="icon-home"></li>
-  <li App-NavItem label="Categories" link="#" icon="icon-bag">
+  <li App-NavItem label="Home" link="/" icon="icon-home"></li>
+  <li App-NavItem label="Categories" link="/categories" icon="icon-bag">
     <div App-SubMenu>
-      <li App-NavItem label="Electronics" link="#" icon="icon-screen-smartphone">
-        <div App-SubMenu>
-          <li App-NavItem label="Mobiles" link="#"></li>
-          <li App-NavItem label="Laptops" link="#"></li>
-          <li App-NavItem label="Cameras" link="#"></li>
-        </div>
-      </li>
-      <li App-NavItem label="Fashion" link="#" icon="icon-tshirt"></li>
+      @for (item of this.productCategories(); track $index) {
+        <li App-NavItem [label]="item.name" link="/categories/{{item.id}}" icon="icon-bag">
+          @if (item.subcategories.length > 0) {
+            <div App-SubMenu>
+              @for (subItem of item.subcategories; track $index) {
+                <li App-NavItem [label]="subItem.name" link="/categories/{{subItem.id}}" icon="icon-bag"></li>
+              }
+            </div>
+          }
+        </li>
+      }
     </div>
   </li>
   <li App-NavItem label="Popular" link="#" icon="icon-fire">

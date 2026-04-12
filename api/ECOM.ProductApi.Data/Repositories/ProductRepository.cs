@@ -14,7 +14,7 @@ public class ProductRepository(NpgsqlDataSource dataSource) : IProductRepository
         const string sql = """
             SELECT
                 p."Id", p."Name", p."Sku", p."ShortDescription", p."Description",
-                p."Price", p."CategoryId", p."BrandId",
+                p."Price", p."CategoryId", p."BrandId", p."Gender",
                 p."Images", p."Metadata",
                 p."CreatedAt", p."UpdatedAt",
                 c."Id", c."Name",
@@ -40,7 +40,7 @@ public class ProductRepository(NpgsqlDataSource dataSource) : IProductRepository
     }
 
     public async Task<(List<Product> Items, int TotalCount)> GetListAsync(
-        int page, int pageSize, string? category, string? brand, string? tag,
+        int page, int pageSize, string? category, string? brand, string? tag, string? gender,
         CancellationToken ct = default)
     {
         await using var conn = await dataSource.OpenConnectionAsync(ct);
@@ -60,7 +60,7 @@ public class ProductRepository(NpgsqlDataSource dataSource) : IProductRepository
         var dataTemplate = builder.AddTemplate("""
             SELECT
                 p."Id", p."Name", p."Sku", p."ShortDescription", p."Description",
-                p."Price", p."CategoryId", p."BrandId",
+                p."Price", p."CategoryId", p."BrandId", p."Gender",
                 p."Images", p."Metadata",
                 p."CreatedAt", p."UpdatedAt",
                 c."Id", c."Name",
@@ -81,6 +81,9 @@ public class ProductRepository(NpgsqlDataSource dataSource) : IProductRepository
 
         if (!string.IsNullOrWhiteSpace(tag))
             builder.Where(@"p.""Metadata""::jsonb -> 'tags' @> @TagJson::jsonb", new { TagJson = JsonSerializer.Serialize(new[] { tag }, JsonDefaults.CamelCase) });
+
+        if (!string.IsNullOrWhiteSpace(gender))
+            builder.Where(@"p.""Gender"" = @Gender", new { Gender = gender });
 
         var countCmd = new CommandDefinition(countTemplate.RawSql, countTemplate.Parameters, cancellationToken: ct);
         var totalCount = await conn.ExecuteScalarAsync<int>(countCmd);
@@ -106,10 +109,10 @@ public class ProductRepository(NpgsqlDataSource dataSource) : IProductRepository
         const string sql = """
             INSERT INTO "Products"
                 ("Name", "Sku", "ShortDescription", "Description", "Price",
-                 "CategoryId", "BrandId", "Images", "Metadata", "CreatedAt", "UpdatedAt")
+                 "CategoryId", "BrandId", "Gender", "Images", "Metadata", "CreatedAt", "UpdatedAt")
             VALUES
                 (@Name, @Sku, @ShortDescription, @Description, @Price,
-                 @CategoryId, @BrandId, @Images::jsonb, @Metadata::jsonb, @CreatedAt, @UpdatedAt)
+                 @CategoryId, @BrandId, @Gender, @Images::jsonb, @Metadata::jsonb, @CreatedAt, @UpdatedAt)
             RETURNING "Id"
             """;
 
@@ -122,6 +125,7 @@ public class ProductRepository(NpgsqlDataSource dataSource) : IProductRepository
             product.Price,
             product.CategoryId,
             product.BrandId,
+            product.Gender,
             product.Images,
             product.Metadata,
             product.CreatedAt,
@@ -144,6 +148,7 @@ public class ProductRepository(NpgsqlDataSource dataSource) : IProductRepository
                 "Price" = @Price,
                 "CategoryId" = @CategoryId,
                 "BrandId" = @BrandId,
+                "Gender" = @Gender,
                 "Images" = @Images::jsonb,
                 "Metadata" = @Metadata::jsonb,
                 "UpdatedAt" = @UpdatedAt
@@ -160,6 +165,7 @@ public class ProductRepository(NpgsqlDataSource dataSource) : IProductRepository
             product.Price,
             product.CategoryId,
             product.BrandId,
+            product.Gender,
             product.Images,
             product.Metadata,
             product.UpdatedAt

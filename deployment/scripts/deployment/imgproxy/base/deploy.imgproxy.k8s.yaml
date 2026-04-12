@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nagp-ecom-imgproxy
+  labels:
+    app: nagp-ecom-imgproxy
+    type: media
+    stack: nagp-ecom-api
+  namespace: nagp-ecom
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nagp-ecom-imgproxy
+      stack: nagp-ecom-api
+  template:
+    metadata:
+      labels:
+        app: nagp-ecom-imgproxy
+        type: media
+        stack: nagp-ecom-api
+    spec:
+      containers:
+        - name: nagp-ecom-imgproxy
+          image: darthsim/imgproxy:v3
+          ports:
+            - name: http
+              containerPort: 8080
+            - name: metrics
+              containerPort: 8081
+          envFrom:
+            - configMapRef:
+                name: nagp-ecom-imgproxy-config
+          env:
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://alloy.observability.svc.cluster.local:4317"
+            - name: OTEL_SERVICE_NAME
+              value: "ecom-imgproxy"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          volumeMounts:
+            - name: product-images
+              mountPath: /images
+              readOnly: true
+      volumes:
+        - name: product-images
+          persistentVolumeClaim:
+            claimName: pvc-product-images

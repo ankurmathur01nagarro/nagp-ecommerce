@@ -67,6 +67,11 @@ spec:
               value: "http://alloy.observability.svc.cluster.local:4317"
             - name: OTEL_SERVICE_NAME
               value: "ecom-product-api"
+            - name: Storage__LocalRoot
+              value: "/app/images"
+          volumeMounts:
+            - name: product-images
+              mountPath: /app/images
           resources:
             requests:
               cpu: 100m
@@ -74,3 +79,7 @@ spec:
             limits:
               cpu: 500m
               memory: 256Mi
+      volumes:
+        - name: product-images
+          persistentVolumeClaim:
+            claimName: pvc-product-images
