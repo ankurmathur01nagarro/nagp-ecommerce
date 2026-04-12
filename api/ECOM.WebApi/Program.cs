@@ -1,4 +1,3 @@
-using System.Text;
 using System.Threading.RateLimiting;
 using ECOM.WebApi.Auth;
 using ECOM.WebApi.Data;
@@ -11,6 +10,7 @@ using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Scalar.AspNetCore;
+using Yarp.ReverseProxy.Transforms.Builder;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,6 +28,7 @@ builder.Services.AddOpenTelemetry()
     {
         tracing.AddAspNetCoreInstrumentation();
         tracing.AddHttpClientInstrumentation();
+        tracing.AddSource("Yarp.ReverseProxy");
     })
     .WithMetrics(metrics =>
     {
@@ -65,7 +66,8 @@ builder.Services.Configure<ExternalAuthOptions>(
 
 builder.Services.AddHeaderPropagation(options => options.Headers.Add("Authorization"));
 
-// HttpClient for calling the Identity API token endpoint
+// HttpClient for calling the Identity API token endpoint.
+// Header propagation forwards the user's Authorization header to the identity server.
 builder.Services.AddHttpClient("identity", client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["IdentityApi:BaseUrl"]!);
@@ -85,22 +87,21 @@ builder.Services.AddOpenIddict()
 builder.Services.AddAuthentication(OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme);
 builder.Services.AddAuthorization();
 
-// YARP — proxies the browser-facing Identity API paths.
+// YARP — proxies the browser-facing Identity API paths and the image proxy route.
 builder.Services.AddReverseProxy()
-    .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
+    .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"))
+    .AddTransformFactory<ImgproxyTransformFactory>();
 
 // HybridCache — L1 in-process memory cache (no secondary store).
 // Used by ImageLookupService to cache ProductApi image-record lookups.
 builder.Services.AddHybridCache();
 
-// HttpClient for ProductApi (image catalog lookup) and imgproxy (image transforms)
+// HttpClient for ProductApi (image catalog lookup).
+// No header propagation: called from HybridCache's background factory which has
+// no active HTTP request context — HeaderPropagationMessageHandler would throw.
 builder.Services.AddHttpClient("product-api", client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["ProductApi:BaseUrl"]!);
-});
-builder.Services.AddHttpClient("imgproxy", client =>
-{
-    client.BaseAddress = new Uri(builder.Configuration["ImageProxy:BaseUrl"]!);
 });
 builder.Services.AddSingleton<IImageLookupService, ImageLookupService>();
 
@@ -140,18 +141,6 @@ app.MapScalarApiReference();
 
 app.UseRateLimiter();
 
-// Promote the ecom_auth cookie to an Authorization header so OpenIddict
-// validation middleware can verify the token without any changes to that pipeline.
-app.Use(async (context, next) =>
-{
-    if (!context.Request.Headers.ContainsKey("Authorization")
-        && context.Request.Cookies.TryGetValue("ecom_auth", out var token))
-    {
-        context.Request.Headers.Authorization = $"Bearer {token}";
-    }
-    await next();
-});
-
 // Must run after cookie promotion so the Authorization header is already set when captured.
 app.UseHeaderPropagation();
 
@@ -159,41 +148,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.MapReverseProxy();
-
-// Image proxy endpoint — resolves a stable image GUID to its source URL (via HybridCache →
-// ProductApi), applies optional client-requested imgproxy transformations, and streams the result.
-app.MapGet("/images/{id:guid}", async (HttpContext ctx, Guid id, IImageLookupService lookup,
-    IHttpClientFactory factory, CancellationToken ct) =>
-{
-    var record = await lookup.GetAsync(id, ct);
-    if (record is null)
-    {
-        ctx.Response.StatusCode = StatusCodes.Status404NotFound;
-        return;
-    }
-
-    var q = ctx.Request.Query;
-    var w = q["w"].FirstOrDefault() ?? "0";
-    var h = q["h"].FirstOrDefault() ?? "0";
-    var fit = q["fit"].FirstOrDefault() ?? "fill";
-    var format = q["format"].FirstOrDefault() ?? "webp";
-    var gravity = q["g"].FirstOrDefault();
-
-    var opts = new StringBuilder();
-    if (w != "0" || h != "0") opts.Append($"rs:{fit}:{w}:{h}/");
-    if (!string.IsNullOrEmpty(gravity)) opts.Append($"g:{gravity}/");
-
-    var encodedSrc = Uri.EscapeDataString(record.Url);
-    var imgproxyPath = $"/unsafe/{opts}plain/{encodedSrc}@{format}";
-
-    var client = factory.CreateClient("imgproxy");
-    using var upstream = await client.GetAsync(imgproxyPath, HttpCompletionOption.ResponseHeadersRead, ct);
-
-    ctx.Response.StatusCode = (int)upstream.StatusCode;
-    ctx.Response.Headers.CacheControl = "public, max-age=86400, immutable";
-    ctx.Response.ContentType = upstream.Content.Headers.ContentType?.ToString() ?? "image/webp";
-    await upstream.Content.CopyToAsync(ctx.Response.Body, ct);
-});
 
 // Serve Angular static files (wwwroot populated by the unified Dockerfile).
 // UseStaticFiles handles hashed asset files (JS/CSS) with far-future cache headers;

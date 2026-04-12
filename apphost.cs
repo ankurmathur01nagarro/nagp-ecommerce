@@ -81,6 +81,7 @@ builder.AddProject(
     .WithEnvironment("IdentityApi__ClientSecret", p_ecomApiClientSecret)
     .WithEnvironment("ReverseProxy__Clusters__ui__Destinations__primary__Address", ui.GetEndpoint("http"))
     .WithEnvironment("ReverseProxy__Clusters__identity__Destinations__primary__Address", identityApi.GetEndpoint("http"))
+    .WithEnvironment("ReverseProxy__Clusters__imgproxy__Destinations__primary__Address", imgproxy.GetEndpoint("http"))
     .WithEnvironment("ImageProxy__BaseUrl", imgproxy.GetEndpoint("http"))
     .WithEnvironment("ProductApi__BaseUrl", productApi.GetEndpoint("http"))
     .WithDeveloperCertificateTrust(true)

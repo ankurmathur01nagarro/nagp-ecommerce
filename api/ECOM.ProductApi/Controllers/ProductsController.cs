@@ -108,8 +108,8 @@ public class ProductsController(IProductRepository repository) : ControllerBase
     private static List<ProductImage> AssignMissingImageIds(List<ProductImage> images)
     {
         foreach (var img in images)
-            if (img.Id == Guid.Empty)
-                img.Id = Guid.NewGuid();
+            if (string.IsNullOrEmpty(img.Id))
+                img.Id = Guid.NewGuid().ToString();
         return images;
     }
 

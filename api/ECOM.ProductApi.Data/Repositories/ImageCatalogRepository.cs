@@ -14,7 +14,7 @@ public sealed class ImageCatalogRepository(NpgsqlDataSource dataSource) : IImage
         // The query is a full-table scan — acceptable because the result is always
         // served from HybridCache in WebApi; the DB is only hit on a cold cache miss.
         const string sql = """
-            SELECT elem->>'id'  AS "Id",
+            SELECT elem->>'id' AS "Id",
                    elem->>'url' AS "Url",
                    elem->>'alt' AS "Alt"
             FROM   "Products",

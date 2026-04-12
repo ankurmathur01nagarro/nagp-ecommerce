@@ -79,11 +79,15 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
     options.KnownProxies.Clear();
 });
 
+builder.Services.AddHeaderPropagation(options => options.Headers.Add("Authorization"));
+builder.Services.ConfigureHttpClientDefaults(http => http.AddHeaderPropagation());
+
 var app = builder.Build();
 if (corsEnabled) app.UseCors();
 
 // Must run first so every subsequent middleware sees the correct public scheme/host.
 app.UseForwardedHeaders();
+app.UseHeaderPropagation();
 
 if (app.Environment.IsDevelopment())
 {

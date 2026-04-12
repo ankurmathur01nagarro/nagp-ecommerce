@@ -76,6 +76,9 @@ The public domain is `nagp-ecom.duckdns.org`. This is already set in `appsetting
 |---|---|
 | WebApi | `nagp-ecom-api.nagp-ecom.svc.cluster.local` |
 | Identity API | `nagp-ecom-identity-api.nagp-ecom.svc.cluster.local` |
+| Product API | `nagp-ecom-productapi.nagp-ecom.svc.cluster.local` (note: no hyphen before "api") |
+| Inventory API | `nagp-ecom-inventoryapi.nagp-ecom.svc.cluster.local` |
+| imgproxy | `nagp-ecom-imgproxy.nagp-ecom.svc.cluster.local` |
 | PostgreSQL | `postgres` (within namespace) |
 
 ## Docker / CI
@@ -126,3 +129,88 @@ Cluster-scoped resources require explicit `clusterResourceWhitelist` entries —
 | `secret/ECOMAPI-CLIENT-ID` | OpenIddict client ID |
 | `secret/ECOMAPI-CLIENT-SECRET` | OpenIddict client secret (same value in both WebApi and Identity API) |
 | `secret/DUCKDNS-TOKEN` | cert-manager DuckDNS webhook token |
+
+---
+
+## Image Service Architecture (GUID-based indirection)
+- Every `ProductImage` in the `Products.Images` JSONB has a stable `Guid Id` field (added by `AddImageIds` migration)
+- Migration `AddImageIds` is data-only (no schema change); uses `gen_random_uuid()` + idempotent CASE WHEN
+- Client calls `GET /images/{guid}?{any imgproxy query params}` on **WebApi** — all query params forwarded to imgproxy unchanged, server has no knowledge of them
+- YARP handles forwarding entirely; no `IHttpForwarder` call in application code, no `"imgproxy"` named HttpClient
+- WebApi resolves GUID → source URL via **HybridCache** (L1 in-process, 1-hour TTL) → ProductApi `GET /api/images/{guid}`
+- YARP rewrites path to `/unsafe/plain/{encodedUrl}` and forwards raw query string to imgproxy
+- imgproxy URL requires `unsafe` token when `IMGPROXY_KEY`/`IMGPROXY_SALT` are not set (dev mode)
+- JSONB shape: `{ "id": "uuid", "url": "...", "alt": "...", "sortOrder": N }`
+- ProductApi `ProductsController` calls `AssignMissingImageIds()` before serialising Images to JSONB (Create + Update)
+- ImageCatalogRepository uses `jsonb_array_elements` unnest via Dapper — full-table scan acceptable because result always served from cache
+
+## Image Service Components
+- `ECOM.ProductApi.Data/Repositories/IImageCatalogRepository.cs` + `ImageCatalogRepository.cs`
+- `ECOM.ProductApi/Controllers/ImagesController.cs` — `GET /api/images/{id:guid}` returns `{ id, url, alt }`
+- `ECOM.WebApi/Infrastructure/ImageRecord.cs` — `[ImmutableObject(true)]` sealed record (required for HybridCache zero-copy)
+- `ECOM.WebApi/Infrastructure/IImageLookupService.cs` + `ImageLookupService.cs` — HybridCache wrapper
+- `ECOM.WebApi/Infrastructure/ImgproxyTransformFactory.cs` — `ITransformFactory`; routes opt in via `{ "ImgproxyLookup": "true" }` in config Transforms array; resolves GUID, rewrites path, stamps Cache-Control
+- `ECOM.WebApi/Program.cs` — `AddHybridCache()`, `AddHttpClient("product-api")`, `.AddTransformFactory<ImgproxyTransformFactory>()` chained on `AddReverseProxy()`
+- imgproxy destination configured solely in `ReverseProxy.Clusters.imgproxy` — no `ImageProxy:BaseUrl` config key
+
+## HybridCache Package
+- `Microsoft.Extensions.Caching.Hybrid` version `10.4.0` is the .NET 10-era NuGet package — must be referenced explicitly (NOT in shared framework)
+- `GetOrCreateAsync` signature: `(key, state, static async (state, ct) => ...)` — state is passed as second positional arg, factory as third
+
+## Categories API
+- `GET /api/categories` (WebApi) — public endpoint, no auth, returns recursive `Category[]` (id: int, name, subcategories)
+- WebApi `CategoriesController` injects `IHttpClientFactory`, creates `"product-api"` client, calls `GET /api/categories`, deserialises `List<CategoryResponse>`, returns `Ok(result)`
+- ProductApi `CategoriesController` injects `ICategoryRepository`, fetches flat rows, builds tree in O(n): `ToDictionary` → single loop, roots = items where `ParentCategoryId IS NULL`
+- `CategoryRepository` uses `NpgsqlDataSource` (Dapper): `SELECT "Id", "Name", "ParentCategoryId" FROM "ProductCategories" ORDER BY "Id"`
+- `FlatCategory` is an internal repository-layer record — kept in its own file (`FlatCategory.cs`) per one-model-per-file rule; NOT the same as `CategoryResponse` DTO
+
+## imgproxy Kubernetes
+- ConfigMap: `IMGPROXY_OPEN_TELEMETRY_ENABLE: "true"`, `IMGPROXY_OPEN_TELEMETRY_ENABLE_METRICS: "true"` (not `IMGPROXY_ENABLE_OPEN_TELEMETRY`)
+- Deployment and Service in `deployment/scripts/deployment/imgproxy/base/`
+
+## Aspire AppHost
+- imgproxy: `AddContainer` with bind mount to `.local-images`, `IMGPROXY_DEVELOPMENT_ERRORS_MODE=true`, `IMGPROXY_LOG_LEVEL=debug`
+- `productApi` variable declared **before** WebApi builder (WebApi references it via `.WithReference(productApi)`)
+- WebApi env vars: `ImageProxy__BaseUrl` from `imgproxy.GetEndpoint("http")`, `ProductApi__BaseUrl` from `productApi.GetEndpoint("http")`
+
+---
+
+## EF Core Migration Lessons
+
+### Required files per migration
+EF needs 3 files — missing any causes silent skip or runtime errors:
+1. `{timestamp}_{Name}.cs` — Up/Down methods
+2. `{timestamp}_{Name}.Designer.cs` — `[Migration("id")]` + `[DbContext]` attributes; EF discovers migrations from this
+3. `{DbContext}ModelSnapshot.cs` — must match current model or `PendingModelChangesWarning` throws at `MigrateAsync`
+
+### Hand-written migrations will be skipped
+Without the Designer.cs, EF does not discover the migration at all — no error, silent skip.
+Always use `dotnet ef migrations add` to generate all 3 files.
+
+### Hand-written Designer.cs workaround
+If the migration body (.cs) must be kept (e.g. seed data), copy the Designer.cs from the previous migration and:
+- Change `[Migration("old_id")]` to the new timestamp+name
+- Change `partial class OldName` to `partial class NewName`
+- The `BuildTargetModel` body is identical if it's a data-only migration (no schema changes)
+
+### Startup project needs Microsoft.EntityFrameworkCore.Design
+Add to the startup project's `.csproj`:
+```xml
+<PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+  <PrivateAssets>all</PrivateAssets>
+</PackageReference>
+```
+
+### Migration ordering
+EF applies migrations in lexicographic order of the timestamp prefix (`yyyyMMddHHmmss`).
+If a hand-written migration has an earlier timestamp than a schema migration it depends on, rename the file.
+EF derives the migration ID from the filename — class internals don't need to change for a rename.
+
+### Diagnosing pending model changes
+Run `dotnet ef migrations add DiagnosticCheck --no-connect` (if supported) or with a live DB.
+If the generated Up/Down is empty → model is in sync.
+Delete the diagnostic migration files manually if DB unavailable (`ef migrations remove` needs a live DB).
+
+### Unknown migrations in __EFMigrationsHistory
+If a migration ID is in the DB history but not in the assembly, EF silently skips it — not an error.
