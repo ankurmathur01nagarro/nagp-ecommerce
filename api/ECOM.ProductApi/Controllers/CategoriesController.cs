@@ -14,7 +14,7 @@ public class CategoriesController(ICategoryRepository repository) : ControllerBa
         var flat = await repository.GetAllAsync(ct);
 
         // Build a lookup by Id for O(n) tree assembly
-        var lookup = flat.ToDictionary(c => c.Id, c => new CategoryResponse(c.Id, c.Name, []));
+        var lookup = flat.ToDictionary(c => c.Id, c => new CategoryResponse(c.Id, c.Name, c.ParentCategoryId, []));
 
         var roots = new List<CategoryResponse>();
 

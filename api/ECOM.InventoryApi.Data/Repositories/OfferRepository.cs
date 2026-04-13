@@ -78,6 +78,23 @@ public class OfferRepository(NpgsqlDataSource dataSource) : IOfferRepository
         return (await conn.QueryAsync<Offer>(cmd)).ToList();
     }
 
+    public async Task<List<Offer>> GetActiveForProductsAsync(int[] productIds, CancellationToken ct = default)
+    {
+        await using var conn = await dataSource.OpenConnectionAsync(ct);
+        const string sql = """
+            SELECT "Id", "Name", "Description", "ProductId", "DiscountType", "DiscountValue",
+                   "StartsAt", "EndsAt", "IsActive", "Rules", "CreatedAt", "UpdatedAt"
+            FROM "Offers"
+            WHERE "IsActive" = TRUE
+              AND "StartsAt" <= NOW()
+              AND "EndsAt" >= NOW()
+              AND ("ProductId" = ANY(@ProductIds) OR "ProductId" IS NULL)
+            ORDER BY "ProductId" NULLS LAST, "DiscountValue" DESC
+            """;
+        var cmd = new CommandDefinition(sql, new { ProductIds = productIds }, cancellationToken: ct);
+        return (await conn.QueryAsync<Offer>(cmd)).ToList();
+    }
+
     public async Task<int> CreateAsync(Offer offer, CancellationToken ct = default)
     {
         await using var conn = await dataSource.OpenConnectionAsync(ct);

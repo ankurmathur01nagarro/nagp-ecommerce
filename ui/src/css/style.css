@@ -1089,6 +1089,7 @@ ul.pl-pages > li.animation { visibility: visible; position: static; }
 .plv-item .plv-body .plva-label { display: inline-block; margin-right: 10px; }
 .plv-item .plv-body .plv-price-block { line-height: 46px; margin-bottom: 15px; border-bottom: 1px solid #ebebeb; }
 .plv-item .plv-body .plv-price { display: inline-block; margin-right: 70px; font-size: 19px; font-weight: 500; color: black; }
+.plv-price-block .plv-price-old { display: inline-block; margin-right: 10px; font-size: 19px; font-weight: 500; color: #a3a3a3; text-decoration: line-through; }
 .plv-item .plv-body .plv-reviews-count { display: inline-block; margin-left: 6px; }
 .plv-item .plv-body .plv-add-review { display: inline-block; margin-left: 16px; }
 .plv-item .plv-body .plv-add-review:before { content: ''; display: inline-block; height: 16px; margin-right: 10px; margin-bottom: -3px; border-left: 1px solid #ebebeb; }
@@ -1212,6 +1213,7 @@ ul.pl-pages > li.animation { visibility: visible; position: static; }
 .wg-categories-list li { line-height: 25px; }
 .wg-categories-list li ul { list-style-type: none; margin: 0; padding: 0 0 0 12px; }
 .wg-categories-list .wgc-count { color: #a1a8b3; }
+.wg-categories-list li .active { font-weight: 700; }
 
 /* =============================== Active Filters =============================== */
 .wg-active-fiters { border: 2px solid #ebebeb; padding: 20px 10px; }

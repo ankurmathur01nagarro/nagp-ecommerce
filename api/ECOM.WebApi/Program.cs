@@ -105,6 +105,12 @@ builder.Services.AddHttpClient("product-api", client =>
 });
 builder.Services.AddSingleton<IImageLookupService, ImageLookupService>();
 
+// HttpClient for InventoryApi (bulk stock lookup for product catalog).
+builder.Services.AddHttpClient("inventory-api", client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["InventoryApi:BaseUrl"]!);
+});
+
 // Trust X-Forwarded-* headers from the ingress controller so Request.Host / Scheme
 // reflect the public-facing hostname rather than the internal pod address.
 builder.Services.Configure<ForwardedHeadersOptions>(options =>

@@ -1,3 +1,3 @@
 namespace ECOM.ProductApi.Dtos;
 
-public record CategoryResponse(int Id, string Name, List<CategoryResponse> Subcategories);
+public record CategoryResponse(int Id, string Name, int? ParentCategoryId, List<CategoryResponse> Subcategories);

@@ -41,26 +41,51 @@ var inventoryMigrations = builder.AddProject("ecom-inventoryapi-migrations", "ap
     .WithReference(inventoryDb, "Default")
     .WaitFor(inventoryDb);
 
+// OpenIddict signing/encryption certs — generated once by deployment/scripts/generate-openiddict-certs.ps1
+// and stored in .certs/ (gitignored). Run the script before starting Aspire for the first time.
+var localCertsDir = Path.Combine(builder.AppHostDirectory, ".certs");
+
+(string base64, string password) ReadCert(string name)
+{
+    var pfxPath      = Path.Combine(localCertsDir, $"{name}.pfx");
+    var passwordPath = Path.Combine(localCertsDir, $"{name}.password");
+
+    if (!File.Exists(pfxPath) || !File.Exists(passwordPath))
+        throw new FileNotFoundException(
+            $"OpenIddict cert not found: {pfxPath}. " +
+            "Run deployment/scripts/generate-openiddict-certs.ps1 first.");
+
+    return (Convert.ToBase64String(File.ReadAllBytes(pfxPath)),
+            File.ReadAllText(passwordPath));
+}
+
+var (signingBase64, signingPassword)       = ReadCert("signing");
+var (encryptionBase64, encryptionPassword) = ReadCert("encryption");
+
 // Identity API (OpenIddict authorization server)
 var identityApi = builder.AddProject("ecom-identity-api", "api/ECOM.Identity.Api/ECOM.Identity.Api.csproj")
     .WithReference(ecomDb, "Default")
     .WithEnvironment("ExternalAuth__Google__ClientId", p_googleClientId)
     .WithEnvironment("ExternalAuth__Google__ClientSecret", p_googleClientSecret)
     .WithEnvironment("OpenIddict__Clients__EcomApi__ClientSecret", p_ecomApiClientSecret)
+    .WithEnvironment("OpenIddict__SigningCertificate__PfxBase64", signingBase64)
+    .WithEnvironment("OpenIddict__SigningCertificate__Password", signingPassword)
+    .WithEnvironment("OpenIddict__EncryptionCertificate__PfxBase64", encryptionBase64)
+    .WithEnvironment("OpenIddict__EncryptionCertificate__Password", encryptionPassword)
     .WaitForCompletion(ecomMigrations);
 
-// var ui = builder.AddExternalService("ecom-web-app", "http://localhost:4200");
-var ui = builder.AddJavaScriptApp("ecom-web-app", "ui")
-    .WithHttpEndpoint(4200, env: "PORT")
-    .WithNpm()
-    .WithExternalHttpEndpoints();
+var ui = builder.AddExternalService("ecom-web-app", "http://localhost:4200");
+// var ui = builder.AddJavaScriptApp("ecom-web-app", "ui")
+//     .WithHttpEndpoint(4200, env: "PORT")
+//     .WithNpm()
+//     .WithExternalHttpEndpoints();
 
 // imgproxy — on-the-fly image resizing; reads from the shared images directory
 var imgproxy = builder.AddContainer("ecom-imgproxy", "darthsim/imgproxy", "v3")
     .WithHttpEndpoint(9001, targetPort: 8080, name: "http")
     .WithBindMount(imagesPath, "/images", isReadOnly: true)
     .WithEnvironment("IMGPROXY_LOCAL_FILESYSTEM_ROOT", "/images")
-    .WithEnvironment("IMGPROXY_ALLOWED_SOURCES", "local://,https://images.pexels.com/")
+    .WithEnvironment("IMGPROXY_ALLOWED_SOURCES", "local://,https://images.pexels.com/,https://images.unsplash.com/,https://cdn.dummyjson.com/")
     .WithEnvironment("IMGPROXY_DEVELOPMENT_ERRORS_MODE", "true")
     .WithEnvironment("IMGPROXY_LOG_LEVEL", "debug");
 
@@ -70,6 +95,11 @@ var productApi = builder.AddProject("ecom-product-api", "api/ECOM.ProductApi/ECO
     .WithEnvironment("Storage__LocalRoot", imagesPath)
     .WaitForCompletion(productMigrations);
 
+// Inventory API (declared before WebApi so WebApi can reference it)
+var inventoryApi = builder.AddProject("ecom-inventory-api", "api/ECOM.InventoryApi/ECOM.InventoryApi.csproj")
+    .WithReference(inventoryDb, "Default")
+    .WaitForCompletion(inventoryMigrations);
+
 // Main Web API (depends on Identity for token issuance)
 builder.AddProject(
         "ecom-web-api",
@@ -78,21 +108,19 @@ builder.AddProject(
     .WithReference(ecomDb, "Default")
     .WithReference(identityApi)
     .WithReference(productApi)
+    .WithReference(inventoryApi)
     .WithEnvironment("IdentityApi__ClientSecret", p_ecomApiClientSecret)
-    .WithEnvironment("ReverseProxy__Clusters__ui__Destinations__primary__Address", ui.GetEndpoint("http"))
+    .WithEnvironment("ReverseProxy__Clusters__ui__Destinations__primary__Address", ui)
     .WithEnvironment("ReverseProxy__Clusters__identity__Destinations__primary__Address", identityApi.GetEndpoint("http"))
     .WithEnvironment("ReverseProxy__Clusters__imgproxy__Destinations__primary__Address", imgproxy.GetEndpoint("http"))
     .WithEnvironment("ImageProxy__BaseUrl", imgproxy.GetEndpoint("http"))
     .WithEnvironment("ProductApi__BaseUrl", productApi.GetEndpoint("http"))
+    .WithEnvironment("InventoryApi__BaseUrl", inventoryApi.GetEndpoint("http"))
     .WithDeveloperCertificateTrust(true)
     .WaitForCompletion(ecomMigrations)
     .WaitFor(identityApi)
     .WaitFor(imgproxy)
-    .WaitFor(productApi);
-
-// Inventory API (stock, offers, user cart)
-builder.AddProject("ecom-inventory-api", "api/ECOM.InventoryApi/ECOM.InventoryApi.csproj")
-    .WithReference(inventoryDb, "Default")
-    .WaitForCompletion(inventoryMigrations);
+    .WaitFor(productApi)
+    .WaitFor(inventoryApi);
 
 builder.Build().Run();

@@ -21,7 +21,7 @@ export class AuthorizationHandlerComponent {
     const returnPath = params.get('returnPath') ?? '/';
 
     if (token && username && expiresAt) {
-      const user: TokenResponse = { token, username, expiresAt: new Date(expiresAt) };
+      const user: TokenResponse = { token, username, expiresAt: expiresAt };
       authStore.setUserFromExternal(user);
       localStorage.setItem('loginSession', JSON.stringify(user));
     }

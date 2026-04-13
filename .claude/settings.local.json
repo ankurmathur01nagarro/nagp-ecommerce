@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet build:*)",
+      "Bash(grep -oP '^\\\\s+\\\\{\\\\s*\\\\K\\\\d+\\(?=,\\\\s*\"\\)' c:/nagp-casestudy/src/api/ECOM.ProductApi.Data/Migrations/20260411220000_SeedAllProducts.cs)",
+      "Bash(grep -E \"^\\\\s+\\\\{$\" -A 1 c:/nagp-casestudy/src/api/ECOM.ProductApi.Data/Migrations/20260411220000_SeedAllProducts.cs)",
+      "Bash(grep -oE '\"[A-Z]{2,3}-[A-Z]+-[A-Z]-[0-9]+\"' c:/nagp-casestudy/src/api/ECOM.ProductApi.Data/Migrations/20260411220000_SeedAllProducts.cs)",
+      "WebFetch(domain:images.pexels.com)",
+      "WebFetch(domain:cdn.dummyjson.com)"
+    ]
+  }
+}

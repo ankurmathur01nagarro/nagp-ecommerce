@@ -13,7 +13,8 @@ import {
   inject,
 } from '@angular/core';
 
-import { NgTemplateOutlet } from "@angular/common";
+import { NgTemplateOutlet, CurrencyPipe } from "@angular/common";
+import { CartStore } from '@app/store/cart.store';
 import { Category, WebApiService } from '@app/services/web-api-service';
 import { lastValueFrom } from 'rxjs';
 
@@ -186,10 +187,11 @@ export class SubMenuColumn {
   selector: 'App-NavBar',
   templateUrl: './nav-bar-component.html',
   styleUrl: './nav-bar-component.css',
-  imports: [NavMenu, NavItem, SubMenu, CustomSubMenu, SubMenuColumn],
+  imports: [NavMenu, NavItem, SubMenu, CustomSubMenu, SubMenuColumn, CurrencyPipe],
 })
 export class NavBarComponent {
   webApiService: WebApiService = inject(WebApiService);
+  cartStore = inject(CartStore);
   productCategories = signal<Category[]>([]);
 
   constructor() {

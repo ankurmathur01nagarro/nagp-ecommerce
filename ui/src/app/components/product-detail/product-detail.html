@@ -1,0 +1,205 @@
+<!-- page body content begin -->
+<div class="pg-body clearfix">
+  <div class="container clearfix">
+
+    <!-- back to catalog -->
+    <div class="row">
+      <div class="container">
+        <div class="col-xs-12 product-top-line">
+          <a routerLink="/catalog" class="btn btn-yet-col col-xs-2 back-catalog pull-left">BACK IN CATALOG</a>
+        </div>
+      </div>
+    </div>
+
+    @if (product.isLoading()) {
+      <div class="row">
+        <div class="col-xs-12 text-center" style="padding: 60px 0;">
+          <p>Loading product...</p>
+        </div>
+      </div>
+    } @else if (product.error()) {
+      <div class="row">
+        <div class="col-xs-12" style="padding: 40px 0;">
+          <div class="alert alert-danger">Failed to load product. Please try again.</div>
+        </div>
+      </div>
+    } @else if (product.hasValue() && product.value()) {
+      <div class="row">
+
+        <!-- LEFT: product images -->
+        <div class="col-md-6 col-lg-7 col-xs-12 product-images">
+          <div class="clearfix zoom-content">
+
+            <div class="clearfix big-image product-page">
+              @if (selectedImage()) {
+                <span class="img-hover-wrap">
+                  <img src="productimages/{{ selectedImage() }}?width=600&height=750&resizing_type=fit" [alt]="product.value()!.name" />
+                  @if (hoverImage()) {
+                    <img class="img-back" src="productimages/{{ hoverImage() }}?width=600&height=750&resizing_type=fit" [alt]="product.value()!.name" />
+                  }
+                </span>
+              }
+            </div>
+
+            @if (thumbnails().length > 1) {
+              <br />
+              <div class="clearfix thumbnails">
+                @for (img of thumbnails(); track img.id) {
+                  <a
+                    (click)="selectImage(img.id)"
+                    [class.active]="selectedImage() === img.id"
+                    style="cursor: pointer;"
+                  >
+                    <img src="productimages/{{ img.id }}?width=82&height=102&resizing_type=fill" [alt]="img.alt" />
+                  </a>
+                }
+              </div>
+            }
+
+          </div>
+        </div>
+
+        <!-- RIGHT: product info -->
+        <div class="col-md-6 col-lg-5 col-xs-12 product-info">
+
+          <div class="product-reviews">
+            <h3>{{ product.value()!.name.toUpperCase() }}</h3>
+            @if (product.value()!.metadata.rating) {
+              <span class="stars-rating"><span class="stars"></span></span>
+            }
+          </div>
+
+          @if (product.value()!.brandName) {
+            <p class="brand">{{ product.value()!.brandName }}</p>
+          }
+
+          <div class="hr"></div>
+
+          <div class="price">
+            @if (hasDiscount()) {
+              {{ discountedPrice() | currency:'USD':'symbol':'1.2-2' }}
+              <span class="old-price">{{ product.value()!.price | currency:'USD':'symbol':'1.2-2' }}</span>
+            } @else {
+              {{ product.value()!.price | currency:'USD':'symbol':'1.2-2' }}
+            }
+          </div>
+
+          <p class="availability col-sm-pull-right col-xs-pull-left">
+            Availability:
+            <span>
+              <span [class]="product.value()!.inStock ? 'in-stock' : 'out-stock'"></span>
+              {{ product.value()!.inStock ? 'In Stock' : 'Out of Stock' }}
+            </span>
+          </p>
+
+          <div class="hr"></div>
+
+          <p class="data-info">Product Code: <span>{{ product.value()!.sku }}</span></p>
+
+          @if (product.value()!.metadata.tags?.length) {
+            <p class="data-info">Product Tags: <span>{{ product.value()!.metadata!.tags!.join(', ') }}</span></p>
+          }
+
+          @if (product.value()!.categoryName) {
+            <p class="data-info">Category: <span>{{ product.value()!.categoryName }}</span></p>
+          }
+
+          <div class="hr"></div>
+
+          @if (product.value()!.description) {
+            <p>{{ product.value()!.description }}</p>
+          } @else if (product.value()!.shortDescription) {
+            <p>{{ product.value()!.shortDescription }}</p>
+          }
+
+          @if (product.value()!.metadata.techSpecs?.length) {
+            <div class="col-xs-12 tech-info">
+              @for (spec of product.value()!.metadata!.techSpecs!; track $index) {
+                <div class="col-sm-4 col-xs-12">
+                  <p class="data-info">{{ spec.label }}: <span>{{ spec.value }}</span></p>
+                </div>
+              }
+            </div>
+          }
+
+          @if (colors().length) {
+            <div class="hr"></div>
+            <span class="data-info secondary-font-family">COLOR: <span>{{ selectedColor() }}</span></span>
+            &emsp;|&emsp;
+            <span class="availability">
+              Availability:
+              <span>
+                <span [class]="product.value()!.inStock ? 'in-stock' : 'out-stock'"></span>
+                {{ product.value()!.inStock ? 'In Stock' : 'Out of Stock' }}
+              </span>
+            </span>
+            <div class="color-blocks">
+              @for (c of colors(); track c.name) {
+                <div class="radio-inline color">
+                  <input
+                    type="radio"
+                    name="color"
+                    [value]="c.name"
+                    [id]="'color-' + c.name"
+                    [checked]="selectedColor() === c.name"
+                    (change)="selectedColor.set(c.name)"
+                  />
+                  <label
+                    [for]="'color-' + c.name"
+                    [style.background-color]="c.hexCode"
+                    [class]="c.name.toLowerCase()"
+                  ></label>
+                </div>
+              }
+            </div>
+          }
+
+          @if (sizes().length) {
+            <div class="hr"></div>
+            <span class="data-info secondary-font-family">SELECT SIZE</span>
+            <div class="size-blocks">
+              @for (s of sizes(); track s) {
+                <div class="radio-inline size">
+                  <input
+                    type="radio"
+                    name="size"
+                    [value]="s"
+                    [id]="'size-' + s"
+                    [checked]="selectedSize() === s"
+                    (change)="selectedSize.set(s)"
+                  />
+                  <label [for]="'size-' + s">{{ s }}</label>
+                </div>
+              }
+            </div>
+          }
+
+          <div class="hr"></div>
+
+          <div class="cart_quantity_button clrfix product-count pull-left">
+            <a rel="nofollow" class="btn btn-default btn-minus" (click)="decrementQty()" style="cursor: pointer;">&ndash;</a>
+            <input
+              type="text"
+              disabled
+              size="2"
+              autocomplete="off"
+              class="cart_quantity_input form-control grey count"
+              [value]="quantity()"
+            />
+            <a rel="nofollow" class="btn btn-default btn-plus" (click)="incrementQty()" style="cursor: pointer;">+</a>
+          </div>
+
+          <button class="btn btn-sec-col pull-left add-cart" (click)="addToCart()">
+            <i class="icon-bag"></i>&nbsp;&nbsp;ADD TO CART
+          </button>
+
+        </div>
+        <!-- product-info -->
+
+      </div>
+      <!-- row -->
+    }
+
+  </div>
+</div>
+<!-- page body content end -->

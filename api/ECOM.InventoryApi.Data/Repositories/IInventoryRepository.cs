@@ -6,6 +6,8 @@ public interface IInventoryRepository
 {
     Task<Inventory?> GetByIdAsync(int id, CancellationToken ct = default);
     Task<Inventory?> GetByProductIdAsync(int productId, CancellationToken ct = default);
+    Task<List<Inventory>> GetByProductIdsAsync(int[] productIds, CancellationToken ct = default);
+    Task<List<Inventory>> GetBySkusAsync(string[] skus, CancellationToken ct = default);
     Task<(List<Inventory> Items, int TotalCount)> GetListAsync(int page, int pageSize, bool? lowStockOnly, string? warehouseCode, CancellationToken ct = default);
     Task<int> CreateAsync(Inventory inventory, CancellationToken ct = default);
     Task<bool> UpdateAsync(Inventory inventory, CancellationToken ct = default);

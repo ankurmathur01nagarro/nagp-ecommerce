@@ -33,6 +33,7 @@
               "src/js/modernizr-2.6.2.min.js",
               "node_modules/jquery/dist/jquery.min.js",
               "node_modules/bootstrap/dist/js/bootstrap.min.js",
+              "src/css/plugins/jquery-ui/jquery-ui.min.js",
               "src/js/plugins.js",
               "src/js/responsiveslides/responsiveslides.min.js",
               "src/js/jquery-accessibleMegaMenu.js",

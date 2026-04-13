@@ -71,6 +71,26 @@ spec:
                 secretKeyRef:
                   name: identity-api-secrets
                   key: ECOMAPI_CLIENT_SECRET
+            - name: OpenIddict__SigningCertificate__PfxBase64
+              valueFrom:
+                secretKeyRef:
+                  name: identity-api-secrets
+                  key: OPENIDDICT_SIGNING_CERT_PFX
+            - name: OpenIddict__SigningCertificate__Password
+              valueFrom:
+                secretKeyRef:
+                  name: identity-api-secrets
+                  key: OPENIDDICT_SIGNING_CERT_PASSWORD
+            - name: OpenIddict__EncryptionCertificate__PfxBase64
+              valueFrom:
+                secretKeyRef:
+                  name: identity-api-secrets
+                  key: OPENIDDICT_ENCRYPTION_CERT_PFX
+            - name: OpenIddict__EncryptionCertificate__Password
+              valueFrom:
+                secretKeyRef:
+                  name: identity-api-secrets
+                  key: OPENIDDICT_ENCRYPTION_CERT_PASSWORD
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
               value: "http://alloy.observability.svc.cluster.local:4317"
             - name: OTEL_SERVICE_NAME

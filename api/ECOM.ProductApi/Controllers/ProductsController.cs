@@ -33,7 +33,7 @@ public class ProductsController(IProductRepository repository) : ControllerBase
         CancellationToken ct = default)
     {
         if (page < 1) page = 1;
-        if (pageSize is < 1 or > 100) pageSize = 20;
+        if (pageSize is < 1 or > 20) pageSize = 20;
 
         var (items, totalCount) = await repository.GetListAsync(page, pageSize, category, brand, tag, gender, ct);
 
@@ -42,6 +42,45 @@ public class ProductsController(IProductRepository repository) : ControllerBase
             totalCount,
             page,
             pageSize));
+    }
+
+    [HttpPost("search")]
+    public async Task<IActionResult> Search([FromBody] ProductSearchRequest request, CancellationToken ct)
+    {
+        var page = request.Page < 1 ? 1 : request.Page;
+        var pageSize = request.PageSize is < 1 or > 20 ? 20 : request.PageSize;
+
+        var filter = new ProductFilter(
+            page,
+            pageSize,
+            request.Colors,
+            request.Sizes,
+            request.PriceMin,
+            request.PriceMax,
+            request.Brands,
+            request.Tags,
+            request.Category,
+            request.Gender,
+            request.RatingMin,
+            request.RatingMax,
+            request.SortBy,
+            request.SortDir);
+
+        var (items, totalCount, facets) = await repository.SearchAsync(filter, ct);
+
+        var facetsResponse = new ProductFacetsResponse(
+            [.. facets.Categories.Select(f => new CategoryFacetResponse(f.CategoryId, f.CategoryName, f.ParentCategoryId, f.Count))],
+            [.. facets.Colors.Select(f => new ColorFacetResponse(f.Name, f.HexCode, f.Count))],
+            [.. facets.Sizes.Select(f => new FacetCountResponse(f.Value, f.Count))],
+            [.. facets.Brands.Select(f => new FacetCountResponse(f.Value, f.Count))],
+            [.. facets.Tags.Select(f => new FacetCountResponse(f.Value, f.Count))]);
+
+        return Ok(new ProductSearchResponse(
+            items.Select(MapToResponse).ToList(),
+            totalCount,
+            page,
+            pageSize,
+            facetsResponse));
     }
 
     [HttpPost]

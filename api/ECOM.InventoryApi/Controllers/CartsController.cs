@@ -11,8 +11,8 @@ namespace ECOM.InventoryApi.Controllers;
 [Route("api/[controller]")]
 public class CartsController(ICartRepository repository) : ControllerBase
 {
-    [HttpGet("{userId:guid}")]
-    public async Task<IActionResult> GetByUser(Guid userId, CancellationToken ct)
+    [HttpGet("{userId:int}")]
+    public async Task<IActionResult> GetByUser(int userId, CancellationToken ct)
     {
         var cart = await repository.GetByUserIdAsync(userId, ct);
         if (cart is null)
@@ -21,8 +21,8 @@ public class CartsController(ICartRepository repository) : ControllerBase
         return Ok(MapToResponse(cart));
     }
 
-    [HttpPost("{userId:guid}/items")]
-    public async Task<IActionResult> AddItem(Guid userId, [FromBody] AddCartItemRequest request, CancellationToken ct)
+    [HttpPost("{userId:int}/items")]
+    public async Task<IActionResult> AddItem(int userId, [FromBody] AddCartItemRequest request, CancellationToken ct)
     {
         if (request.Quantity <= 0)
             return BadRequest(new { error = "Quantity must be greater than zero." });
@@ -55,8 +55,8 @@ public class CartsController(ICartRepository repository) : ControllerBase
         return Ok(MapToResponse(updated!));
     }
 
-    [HttpPut("{userId:guid}/items/{productId:int}")]
-    public async Task<IActionResult> UpdateItem(Guid userId, int productId, [FromBody] UpdateCartItemRequest request, CancellationToken ct)
+    [HttpPut("{userId:int}/items/{productId:int}")]
+    public async Task<IActionResult> UpdateItem(int userId, int productId, [FromBody] UpdateCartItemRequest request, CancellationToken ct)
     {
         var cart = await repository.GetByUserIdAsync(userId, ct);
         if (cart is null)
@@ -77,8 +77,8 @@ public class CartsController(ICartRepository repository) : ControllerBase
         return Ok(MapToResponse(updated!));
     }
 
-    [HttpDelete("{userId:guid}/items/{productId:int}")]
-    public async Task<IActionResult> RemoveItem(Guid userId, int productId, CancellationToken ct)
+    [HttpDelete("{userId:int}/items/{productId:int}")]
+    public async Task<IActionResult> RemoveItem(int userId, int productId, CancellationToken ct)
     {
         var cart = await repository.GetByUserIdAsync(userId, ct);
         if (cart is null)
@@ -94,8 +94,8 @@ public class CartsController(ICartRepository repository) : ControllerBase
         return Ok(MapToResponse(updated!));
     }
 
-    [HttpPost("{userId:guid}/clear")]
-    public async Task<IActionResult> Clear(Guid userId, CancellationToken ct)
+    [HttpPost("{userId:int}/clear")]
+    public async Task<IActionResult> Clear(int userId, CancellationToken ct)
     {
         var ok = await repository.ClearAsync(userId, ct);
         if (!ok)
@@ -105,8 +105,8 @@ public class CartsController(ICartRepository repository) : ControllerBase
         return Ok(MapToResponse(updated!));
     }
 
-    [HttpDelete("{userId:guid}")]
-    public async Task<IActionResult> Delete(Guid userId, CancellationToken ct)
+    [HttpDelete("{userId:int}")]
+    public async Task<IActionResult> Delete(int userId, CancellationToken ct)
     {
         var deleted = await repository.DeleteAsync(userId, ct);
         if (!deleted)

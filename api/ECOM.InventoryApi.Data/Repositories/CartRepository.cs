@@ -6,7 +6,7 @@ namespace ECOM.InventoryApi.Data.Repositories;
 
 public class CartRepository(NpgsqlDataSource dataSource) : ICartRepository
 {
-    public async Task<Cart?> GetByUserIdAsync(Guid userId, CancellationToken ct = default)
+    public async Task<Cart?> GetByUserIdAsync(int userId, CancellationToken ct = default)
     {
         await using var conn = await dataSource.OpenConnectionAsync(ct);
         const string sql = """
@@ -18,7 +18,7 @@ public class CartRepository(NpgsqlDataSource dataSource) : ICartRepository
         return await conn.QuerySingleOrDefaultAsync<Cart>(cmd);
     }
 
-    public async Task<Cart> GetOrCreateByUserIdAsync(Guid userId, CancellationToken ct = default)
+    public async Task<Cart> GetOrCreateByUserIdAsync(int userId, CancellationToken ct = default)
     {
         var existing = await GetByUserIdAsync(userId, ct);
         if (existing is not null)
@@ -35,7 +35,7 @@ public class CartRepository(NpgsqlDataSource dataSource) : ICartRepository
         return await conn.QuerySingleAsync<Cart>(cmd);
     }
 
-    public async Task<bool> SetItemsAsync(Guid userId, string itemsJson, CancellationToken ct = default)
+    public async Task<bool> SetItemsAsync(int userId, string itemsJson, CancellationToken ct = default)
     {
         await using var conn = await dataSource.OpenConnectionAsync(ct);
         const string sql = """
@@ -49,7 +49,7 @@ public class CartRepository(NpgsqlDataSource dataSource) : ICartRepository
         return await conn.ExecuteAsync(cmd) > 0;
     }
 
-    public async Task<bool> ClearAsync(Guid userId, CancellationToken ct = default)
+    public async Task<bool> ClearAsync(int userId, CancellationToken ct = default)
     {
         await using var conn = await dataSource.OpenConnectionAsync(ct);
         const string sql = """
@@ -62,7 +62,7 @@ public class CartRepository(NpgsqlDataSource dataSource) : ICartRepository
         return await conn.ExecuteAsync(cmd) > 0;
     }
 
-    public async Task<bool> DeleteAsync(Guid userId, CancellationToken ct = default)
+    public async Task<bool> DeleteAsync(int userId, CancellationToken ct = default)
     {
         await using var conn = await dataSource.OpenConnectionAsync(ct);
         const string sql = """DELETE FROM "Carts" WHERE "UserId" = @UserId""";

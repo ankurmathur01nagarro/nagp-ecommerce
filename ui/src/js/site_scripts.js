@@ -521,33 +521,55 @@ $('.thumbnails-carousel').thumbnailsCarousel();
 // Price range filters init
 // ============================================================================
 
-$(function() {
+// Managed by Angular CatalogComponent via afterNextRender — not auto-initialized here.
+// data-min / data-max  = overall allowed range (bound from Angular to actual product prices)
+// data-currentMin / data-currentMax = current slider handle positions
+function initPriceRangeSlider(el) {
    if(!$.fn.slider) return;
 
-   $( ".price-range-selector" ).each(function(){
-      var $price_label = $(this).siblings('.wgpf-label').find('.price-range-label');
-      var cur_sign = $price_label.data('currency-sign');
-      var cursign_before = $price_label.data('cursign-before');
-      $(this).slider({
-         range: true,
-         min: $(this).data('min'),
-         max: $(this).data('max'),
-         values: [ 0, $(this).data('max') ],
-         slide: function( event, ui ) {
-            set_range_label(ui.values[ 0 ], ui.values[ 1 ]);
-         }
-      });
+   var $this = $(el);
+   var $price_label = $this.siblings('.wgpf-label').find('.price-range-label');
+   var cur_sign = $price_label.data('currency-sign');
+   var cursign_before = $price_label.data('cursign-before');
 
-      function set_range_label(value1, value2){
-         if(cursign_before)
-            $price_label.text( cur_sign + value1 + " - " + cur_sign + value2 );
-         else
-            $price_label.text( value1 + cur_sign + " - " + value2 + cur_sign);
+   // Destroy any existing slider instance before re-init.
+   if ($this.slider('instance')) {
+      $this.slider('destroy');
+   }
+
+   // Re-read from DOM attributes so Angular bindings are picked up after re-init.
+   var minVal = +$this.attr('data-min') || 0;
+   var maxVal = +$this.attr('data-max') || 0;
+
+   $this.slider({
+      range: true,
+      min: minVal,
+      max: maxVal,
+      values: [ minVal, maxVal ],
+      slide: function( event, ui ) {
+         // Write current positions to separate attributes so the MutationObserver
+         // in the Angular directive fires without disturbing data-min / data-max.
+         $(this).attr('data-currentmin', ui.values[ 0 ]).attr('data-currentmax', ui.values[ 1 ]);
+         set_range_label(ui.values[ 0 ], ui.values[ 1 ]);
       }
-
-      set_range_label($(this).data('min'), $(this).data('max'));
    });
-});
+
+   function set_range_label(value1, value2){
+      if(cursign_before)
+         $price_label.text( cur_sign + value1 + " - " + cur_sign + value2 );
+      else
+         $price_label.text( value1 + cur_sign + " - " + value2 + cur_sign);
+   }
+
+   set_range_label(minVal, maxVal);
+}
+
+function initPriceRangeSliders() {
+   $( ".price-range-selector" ).each(function(){ initPriceRangeSlider(this); });
+}
+
+window['initPriceRangeSlider'] = initPriceRangeSlider;
+window['initPriceRangeSliders'] = initPriceRangeSliders;
 
 
 // ============================================================================

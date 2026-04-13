@@ -1,1 +1,473 @@
-<p>catalog-component works!</p>
+<!-- page body content begin -->
+<div class="pg-body">
+  <div class="container">
+    <div class="gap-70 hidden-xs"></div>
+    <div class="row">
+      <div class="col-md-9 col-md-push-3 cat-content">
+        <div class="cat-view-options">
+          <div class="row">
+            <div class="col-md-4">
+              <div class="row no-gutter form-group">
+                <div class="col-md-4">
+                  <label class="cvo-label">Sort By</label>
+                </div>
+                <div class="col-md-8">
+                  <select class="form-control cvo-control s-styled hasCustomSelect"
+                    [formField]="this.modelForm.sortBy" >
+                    @for (item of this.sortByOptions; track $index) {
+                      <option value="{{item.value}}">{{item.display}}</option>
+                    }
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3 col-lg-2">
+              <div class="row no-gutter form-group">
+                <div class="col-md-6">
+                  <label class="cvo-label">Show</label>
+                </div>
+                <div class="col-md-6">
+                  <select
+                    class="form-control cvo-control s-styled hasCustomSelect"
+                    style="padding: 5px 10px;"
+                    [formField]="this.modelForm.pagination.pageSize"
+                  >
+                  @for (item of this.paginationOptions; track $index) {
+                    <option value="{{item}}">{{item}}</option>
+                  }
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-2 col-lg-2 cvo-availability-col">
+              <div class="form-group">
+                <select
+                  class="form-control cvo-control s-styled hasCustomSelect"
+                  [formField]="this.modelForm.inStock"
+                >
+                @for (item of this.inStockOptions; track $index) {
+                  <option value="{{item.value}}">{{item.display}}</option>
+                }
+                </select>
+              </div>
+            </div>
+            <div class="col-md-3 col-lg-4 text-right">
+              <label class="cvo-label">View</label>
+              <div class="cvo-view-type" role="tablist">
+                <ul class="list-inline">
+                  <li class="active">
+                    <a href="#pl-grid" role="tab" data-toggle="tab" class="cvo-grid">
+                      <svg
+                        version="1.1"
+                        xmlns="http://www.w3.org/2000/svg"
+                        xmlns:xlink="http://www.w3.org/1999/xlink"
+                        x="0px"
+                        y="0px"
+                        width="14px"
+                        height="14px"
+                        viewBox="0 0 50 50"
+                        xml:space="preserve"
+                      >
+                        <rect x="0" y="0" width="20" height="20" />
+                        <rect x="30" y="0" width="20" height="20" />
+                        <rect x="0" y="30" width="20" height="20" />
+                        <rect x="30" y="30" width="20" height="20" />
+                      </svg>
+                    </a>
+                  </li>
+                  <li>
+                    <a href="#pl-list" role="tab" data-toggle="tab" class="cvo-list">
+                      <svg
+                        version="1.1"
+                        xmlns="http://www.w3.org/2000/svg"
+                        xmlns:xlink="http://www.w3.org/1999/xlink"
+                        x="0px"
+                        y="0px"
+                        width="14px"
+                        height="14px"
+                        viewBox="0 0 30.263 25.6"
+                        xml:space="preserve"
+                      >
+                        <rect width="7.732" height="6.398" />
+                        <rect y="9.6" width="7.732" height="6.4" />
+                        <rect y="19.199" width="7.732" height="6.398" />
+                        <rect x="10.933" y="9.602" width="19.33" height="6.4" />
+                        <rect x="10.933" y="19.199" width="19.33" height="6.4" />
+                        <rect x="10.933" width="19.33" height="6.4" />
+                      </svg>
+                    </a>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- cat-view-options -->
+
+        <div class="cat-pagination">
+          <div class="row">
+            <div class="col-sm-6">Items {{this.itemStart()}} to {{this.itemEnd()}} of {{this.totalItems()}} total</div>
+            <div class="col-sm-6 text-right">
+              <ul class="pagination">
+                @for (item of this.pages(); track $index) {
+                  <li class="{{item === this.model().pagination.page ? 'active' : ''}}">
+                    <a (click)="this.setPage(item)">{{item}}</a>
+                  </li>
+                }
+                <li>
+                  <a (click)="this.setPage(this.totalPages())" aria-label="Next">
+                    <i class="arrow_carrot-right"></i>
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-content tab-no-style">
+          <div class="tab-pane fade in active" id="pl-grid">
+            <div class="products-list">
+              <div class="row">
+                @for (item of products(); track item.id) {
+                  <div class="col-md-4 col-sm-6 pl-item">
+                    <figure>
+                      <a [routerLink]="['/product', item.id]" class="pl-w-backside">
+                        <img src="productimages/{{item.images[0]?.id}}" alt="" />
+                        <span class="pl-backside">
+                          <img src="productimages/{{item.images[1]?.id}}" alt="" />
+                        </span>
+                      </a>
+                      @if (item.hasDiscount) {
+                        @if (item.activeOffer?.discountType === 'Percentage') {
+                          <label class="pl-badge">- {{item.activeOffer!.discountValue}}%</label>
+                        } @else if (item.activeOffer?.discountType === 'FixedAmount') {
+                          <label class="pl-badge">- $ {{item.activeOffer!.discountValue}}</label>
+                        }
+                      } @else if (item.isNew) {
+                        <label class="pl-badge">NEW</label>
+                      }
+                      <figcaption style="display: inline-flex; flex-direction: row; align-items: center; justify-content: center;">
+                        <a
+                          class="pl-button pl-addcart"
+                          data-toggle="tooltip"
+                          data-placement="top"
+                          title="Add To Cart"
+                          (click)="this.addToCart(item.id)"
+                          ><i class="icon-bag"></i>
+                        </a>
+                        <a
+                          href="#"
+                          class="pl-button pl-wishlist"
+                          data-toggle="tooltip"
+                          data-placement="top"
+                          title="Add To Wish List"
+                          ><i class="icon-heart"></i>
+                        </a>
+                      </figcaption>
+                    </figure>
+                    <div class="pl-caption">
+                      <p class="pl-price-block">
+                        @if (item.hasDiscount) {
+                          <span class="pl-price-old">$ {{item.price}}</span>
+                        }
+                        <span class="pl-price">$ {{item.discountedPrice}}</span>
+                      </p>
+                      <p class="pl-name"><a [routerLink]="['/product', item.id]">{{item.name}}</a></p>
+                      <span class="stars-rating stars-4">
+                        <span class="stars"></span>
+                      </span>
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
+          <!-- grid list -->
+          <div class="tab-pane fade" id="pl-list">
+            <div class="products-listview">
+
+              @for (item of products(); track item.id) {
+                <div class="plv-item">
+                  <div class="row no-gutter">
+                    <div class="col-sm-4 plv-image">
+                      <figure>
+                        <a [routerLink]="['/product', item.id]" class="plv-w-backside">
+                          <img src="productimages/{{item.images[0]?.id}}" alt="" />
+                          <span class="plv-backside">
+                            <img src="productimages/{{item.images[1]?.id}}" alt="" />
+                          </span>
+                        </a>
+                      </figure>
+                    </div>
+                    <div class="col-sm-8">
+                      <div class="plv-body">
+                        <div class="plv-header">
+                          <div class="row">
+                            <div class="col-xs-6 plv-title"><a [routerLink]="['/product', item.id]">{{item.name}}</a></div>
+                            <div class="col-xs-6 plv-availability">
+                              <span class="plva-label">Availability:</span>
+                              @if (item.inStock) {
+                                <i class="dot-green"></i><span>In Stock</span>
+                              } @else {
+                                <i class="dot-red"></i><span>Out of Stock</span>
+                              }
+                            </div>
+                          </div>
+                        </div>
+                        <div class="plv-price-block">
+                          @if (item.hasDiscount) {
+                            <div class="plv-price-old">${{item.price}}</div>
+                          }
+                          <div class="plv-price">${{item.discountedPrice}}</div>
+                          <span class="stars-rating stars-3"><span class="stars"></span></span>
+                          <div class="plv-reviews-count">20 Review(s)</div>
+                          <div class="plv-add-review"><a href="#">Add Review</a></div>
+                        </div>
+                        <div class="plv-exerpt">
+                          {{item.description}}
+                        </div>
+                        <div class="plv-buttons">
+                          <a class="btn btn-sec-col" (click)="addToCart(item.id)"><i class="icon-bag"></i> Add to Cart</a>
+                          <a href="#" class="btn btn-prim-col"
+                            ><i class="icon-heart"></i> Add to Wishlist</a
+                          >
+                          <a
+                          (click)="$event.preventDefault();">
+                            <i class="arrow_left-right_alt"></i>Add to Compare
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <!-- plv-item -->
+              }
+            </div>
+            <!-- products-listview -->
+          </div>
+          <!-- tab pl-list -->
+        </div>
+      </div>
+      <!-- cat-content -->
+      <div class="col-md-3 col-md-pull-9 cat-sidebar">
+        <aside>
+          <div class="widget wg-categories">
+            <h3 class="wg-title">Categories</h3>
+            <div class="wg-body">
+              <ul class="wg-categories-list">
+                <li>
+                  <a href="/catalog"
+                    [class.active]="!model().category">(All)</a>
+                </li>
+                @for (category of categories().at(0)?.subcategories ?? []; track $index) {
+                  <li>
+                    <a href="/catalog/{{category.id}}"
+                      [class.active]="category.id == model().category">{{category.name}} <span class="wgc-count"> ({{getCategoryProductCount(category.id)}})</span>
+                    </a>
+                    @if (category.subcategories.length > 0) {
+                      <ul>
+                      @for (subCategory of category.subcategories; track $index) {
+                        <li>
+                          <a href="/catalog/{{subCategory.id}}"
+                            [class.active]="subCategory.id == model().category">
+                              {{subCategory.name}}
+                          </a>
+                        </li>
+                      }
+                      </ul>
+                    }
+                  </li>
+                }
+              </ul>
+            </div>
+          </div>
+          <!-- widget -->
+
+          <div class="widget wg-active-fiters">
+            <h3 class="wg-title">Enabled filters</h3>
+            <div class="wg-body">
+              <ul class="wg-af-list">
+                @if ((this.model().colors?.length ?? 0) > 0) {
+                  <li>
+                    <label>Color:</label>
+                    <span class="wg-afl-val">{{this.model().colors?.join(', ')}}</span>
+                    <a class="wg-afl-del"><i class="icon_close"></i></a>
+                  </li>
+                }
+                @if (model().inStock !== '') {
+                  <li>
+                    <label>Availability:</label>
+                    <span class="wg-afl-val">{{model().inStock == 'inStock' ? 'In Stock' : 'Out of Stock'}}</span>
+                    <a class="wg-afl-del"><i class="icon_close"></i></a>
+                  </li>
+                }
+                @if (model().sizes?.length ?? 0 > 0) {
+                  <li>
+                    <label>Size:</label>
+                    <span class="wg-afl-val">{{model().sizes?.join(', ')}}</span>
+                    <a class="wg-afl-del"><i class="icon_close"></i></a>
+                  </li>
+                }
+                @if ((model().brands?.length ?? 0) > 0) {
+                  <li>
+                    <label>Brand:</label>
+                    <span class="wg-afl-val">{{model().brands?.join(', ')}}</span>
+                    <a class="wg-afl-del"><i class="icon_close"></i></a>
+                  </li>
+                }
+                @if ((model().tags?.length ?? 0) > 0) {
+                  <li>
+                    <label>Tag:</label>
+                    <span class="wg-afl-val">{{model().tags?.join(', ')}}</span>
+                    <a class="wg-afl-del"><i class="icon_close"></i></a>
+                  </li>
+                }
+                @if (model().priceRange.min > 0 || model().priceRange.max > 0) {
+                  <li>
+                    <label>Price:</label>
+                    <span class="wg-afl-val">
+                      ${{model().priceRange.min}} - ${{model().priceRange.max}}
+                    </span>
+                    <a class="wg-afl-del"><i class="icon_close"></i></a>
+                  </li>
+                }
+              </ul>
+              <div class="text-center">
+                <a href="#" class="close-btn"><i class="icon_close"></i><span>Clear all</span></a>
+              </div>
+            </div>
+          </div>
+          <!-- widget -->
+
+          <div class="widget wg-price-fiter">
+            <h3 class="wg-title">Filter by price</h3>
+            <div class="wg-body">
+              <div class="price-range-selector needsclick"
+                data-min="0"
+                data-max="1000"
+                priceRangeSlider
+                [value]="model().priceRange"
+                (valueChange)="model.update(m => ({ ...m, priceRange: $event }))"></div>
+              <p class="wgpf-label">
+                <label>Price:</label>
+                <span
+                  class="price-range-label"
+                  data-currency-sign="$"
+                  data-cursign-before="true"
+                ></span>
+              </p>
+            </div>
+          </div>
+          <!-- widget -->
+
+          <div class="widget wg-filterslist">
+            <h3 class="wg-title">Brands</h3>
+            <div class="wg-body">
+              <ul class="wgfl-list">
+                @for (brand of facets().brands; track brand.value) {
+                  <li>
+                    <input
+                      [id]="'brand-' + brand.value"
+                      type="checkbox"
+                      name="checkbox"
+                      [value]="brand.value"
+                      class="stl"
+                      [checked]="model().brands?.includes(brand.value)"
+                      (change)="toggleBrand(brand.value)"
+                    />
+                    <label [for]="'brand-' + brand.value" class="stl"
+                      ><span></span>{{brand.value}} <em class="wgfl-count">({{brand.count}})</em></label
+                    ><br />
+                  </li>
+                }
+              </ul>
+            </div>
+          </div>
+          <!-- widget -->
+
+          <div class="widget wg-filterslist">
+            <h3 class="wg-title">Product Tags</h3>
+            <div class="wg-body">
+              <ul class="wgfl-list">
+                @for (tag of facets().tags.slice().sort((a, b) => b.count - a.count).slice(0, 5); track tag.value) {
+                  <li>
+                    <input
+                      [id]="'tag-' + tag.value"
+                      type="checkbox"
+                      name="checkbox"
+                      [value]="tag.value"
+                      class="stl"
+                      [checked]="model().tags?.includes(tag.value)"
+                      (change)="toggleTag(tag.value)"
+                    />
+                    <label [for]="'tag-' + tag.value" class="stl"
+                      ><span></span>{{tag.value}} <em class="wgfl-count">({{tag.count}})</em></label
+                    ><br />
+                  </li>
+                }
+              </ul>
+            </div>
+          </div>
+          <!-- widget -->
+
+          <div class="widget wg-filterslist">
+            <h3 class="wg-title">Color</h3>
+            <div class="wg-body">
+              <ul class="wgfl-list">
+                @for (color of facets().colors.slice().sort((a, b) => b.count - a.count).slice(0, 5); track color.name) {
+                  <li>
+                    @if (color.hexCode) {
+                      <input
+                        class="color-option"
+                        type="button"
+                        [name]="'c-' + color.name"
+                        value=" "
+                        [style.background]="color.hexCode"
+                        [class.selected]="model().colors?.includes(color.name)"
+                        (click)="toggleColor(color.name)"
+                      />
+                    }
+                    <a (click)="toggleColor(color.name)" style="cursor:pointer"
+                      [class.active]="model().colors?.includes(color.name)">
+                      {{color.name}} <em class="wgfl-count">({{color.count}})</em>
+                    </a>
+                  </li>
+                }
+              </ul>
+            </div>
+          </div>
+          <!-- widget -->
+
+          <div class="widget wg-filterslist">
+            <div class="wg-title">Size</div>
+            <div class="wg-body">
+              <ul class="wgfl-list">
+                @for (size of facets().sizes.slice().sort((a, b) => b.count - a.count).slice(0, 5); track size.value) {
+                  <li>
+                    <input
+                      [id]="'size-' + size.value"
+                      type="checkbox"
+                      name="checkbox"
+                      [value]="size.value"
+                      class="stl"
+                      [checked]="model().sizes?.includes(size.value)"
+                      (change)="toggleSize(size.value)"
+                    />
+                    <label [for]="'size-' + size.value" class="stl"
+                      ><span></span>{{size.value}} <em class="wgfl-count">({{size.count}})</em></label
+                    ><br />
+                  </li>
+                }
+              </ul>
+            </div>
+          </div>
+          <!-- widget -->
+        </aside>
+      </div>
+      <!-- sidebar -->
+    </div>
+    <div class="gap-70"></div>
+  </div>
+  <!-- container -->
+</div>
+<!-- pg-body -->

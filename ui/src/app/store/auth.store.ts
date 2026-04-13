@@ -32,9 +32,9 @@ export const AuthStore = signalStore(
   })),
 
   withComputed(({ user }) => ({
-    isLoggedIn: computed(() => {
+    isExpired: computed(() => {
       const u = user();
-      return u !== null && new Date(u.expiresAt) > new Date();
+      return u !== null && new Date(u.expiresAt) < new Date();
     }),
     displayName: computed(() => user()?.username ?? null),
   })),
@@ -45,6 +45,7 @@ export const AuthStore = signalStore(
       try {
         const user = await lastValueFrom(store._authService.login(credentials));
         patchState(store, { user, isLoading: false });
+        localStorage.setItem('loginSession', JSON.stringify(user));
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Login failed. Please try again.';
         patchState(store, { isLoading: false, loginError: message });
@@ -64,6 +65,7 @@ export const AuthStore = signalStore(
 
     logout(): void {
       patchState(store, initialState);
+      localStorage.removeItem('loginSession');
     },
 
     clearLoginError(): void {

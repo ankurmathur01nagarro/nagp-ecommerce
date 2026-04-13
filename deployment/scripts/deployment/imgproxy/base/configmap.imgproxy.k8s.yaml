@@ -15,8 +15,8 @@ data:
   # Local filesystem source — images are read from the shared PVC
   IMGPROXY_LOCAL_FILESYSTEM_ROOT: "/images"
 
-  # Remote sources — allow fetching from Pexels for seeded product images
-  IMGPROXY_ALLOWED_SOURCES: "local://,https://images.pexels.com/"
+  # Remote sources — allow fetching from Pexels, Unsplash and DummyJSON CDN for seeded product images
+  IMGPROXY_ALLOWED_SOURCES: "local://,https://images.pexels.com/,https://images.unsplash.com/,https://cdn.dummyjson.com/"
 
   # Image processing defaults
   IMGPROXY_MAX_SRC_RESOLUTION: "25"

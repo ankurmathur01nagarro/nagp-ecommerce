@@ -10,7 +10,7 @@ public class Cart
 
     /// <summary>Owning user — one cart per user (enforced by unique index).</summary>
     [Required]
-    public Guid UserId { get; set; }
+    public int UserId { get; set; }
 
     /// <summary>Cart line items stored as a JSONB array — { productId, sku, name, unitPrice, quantity, imageUrl, addedAt, appliedOfferId }</summary>
     [Column(TypeName = "jsonb")]

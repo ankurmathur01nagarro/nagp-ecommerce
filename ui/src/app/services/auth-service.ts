@@ -6,7 +6,7 @@ import { SKIP_AUTH } from './authInterceptor';
 
 export type TokenResponse = {
   username: string;
-  expiresAt: Date;
+  expiresAt: string;
   token: string;
 };
 

@@ -83,7 +83,7 @@ public partial class IdentityService(
         }
 
         if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
-            return new RegisterResult(false, "A user with that username or email already exists.");
+            return new RegisterResult(false, "A user with that username or email already exists.", IsConflict: true);
 
         if (!response.IsSuccessStatusCode)
         {
@@ -215,6 +215,8 @@ public partial class IdentityService(
             var doc = JsonDocument.Parse(body);
             if (doc.RootElement.TryGetProperty("error_description", out var desc))
                 return desc.GetString() ?? "Authentication failed.";
+            if (doc.RootElement.TryGetProperty("error", out var err))
+                return err.GetString() ?? "Authentication failed.";
         }
         catch { /* unparseable body — fall through */ }
 

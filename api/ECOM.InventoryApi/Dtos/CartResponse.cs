@@ -4,7 +4,7 @@ namespace ECOM.InventoryApi.Dtos;
 
 public record CartResponse(
     int Id,
-    Guid UserId,
+    int UserId,
     List<CartItem> Items,
     decimal Subtotal,
     int ItemCount,

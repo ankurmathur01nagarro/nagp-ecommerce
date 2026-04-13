@@ -33,6 +33,32 @@ public class InventoryRepository(NpgsqlDataSource dataSource) : IInventoryReposi
         return await conn.QuerySingleOrDefaultAsync<Inventory>(cmd);
     }
 
+    public async Task<List<Inventory>> GetByProductIdsAsync(int[] productIds, CancellationToken ct = default)
+    {
+        await using var conn = await dataSource.OpenConnectionAsync(ct);
+        const string sql = """
+            SELECT "Id", "ProductId", "Sku", "Quantity", "Reserved", "LowStockThreshold",
+                   "Metadata", "CreatedAt", "UpdatedAt"
+            FROM "Inventories"
+            WHERE "ProductId" = ANY(@ProductIds)
+            """;
+        var cmd = new CommandDefinition(sql, new { ProductIds = productIds }, cancellationToken: ct);
+        return (await conn.QueryAsync<Inventory>(cmd)).ToList();
+    }
+
+    public async Task<List<Inventory>> GetBySkusAsync(string[] skus, CancellationToken ct = default)
+    {
+        await using var conn = await dataSource.OpenConnectionAsync(ct);
+        const string sql = """
+            SELECT "Id", "ProductId", "Sku", "Quantity", "Reserved", "LowStockThreshold",
+                   "Metadata", "CreatedAt", "UpdatedAt"
+            FROM "Inventories"
+            WHERE "Sku" = ANY(@Skus)
+            """;
+        var cmd = new CommandDefinition(sql, new { Skus = skus }, cancellationToken: ct);
+        return (await conn.QueryAsync<Inventory>(cmd)).ToList();
+    }
+
     public async Task<(List<Inventory> Items, int TotalCount)> GetListAsync(
         int page, int pageSize, bool? lowStockOnly, string? warehouseCode, CancellationToken ct = default)
     {

@@ -1,3 +1,4 @@
+using System.Security.Cryptography.X509Certificates;
 using ECOM.Identity.Api.DataAccess;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
@@ -88,9 +89,29 @@ public static class OpenIddictExtensions
                 options.AllowPasswordFlow();
                 options.AllowAuthorizationCodeFlow();
 
-                // In dev, use ephemeral keys (don't persist between restarts)
-                options.AddEphemeralEncryptionKey()
-                    .AddEphemeralSigningKey();
+                // Persist signing/encryption keys across restarts so existing tokens remain valid.
+                // When running via Aspire (dev) or Kubernetes, certs are injected as base64 PFX env vars.
+                // Fallback to ASP.NET development certificates only when running standalone without Aspire.
+                var signingPfxBase64 = builder.Configuration["OpenIddict:SigningCertificate:PfxBase64"];
+                if (!string.IsNullOrEmpty(signingPfxBase64))
+                {
+                    var signingCert = X509CertificateLoader.LoadPkcs12(
+                        Convert.FromBase64String(signingPfxBase64),
+                        builder.Configuration["OpenIddict:SigningCertificate:Password"]);
+
+                    var encryptionCert = X509CertificateLoader.LoadPkcs12(
+                        Convert.FromBase64String(builder.Configuration["OpenIddict:EncryptionCertificate:PfxBase64"]!),
+                        builder.Configuration["OpenIddict:EncryptionCertificate:Password"]);
+
+                    options.AddSigningCertificate(signingCert)
+                           .AddEncryptionCertificate(encryptionCert);
+                }
+                else
+                {
+                    // Standalone dev without Aspire: use ASP.NET dev certs (persisted in user profile)
+                    options.AddDevelopmentEncryptionCertificate()
+                           .AddDevelopmentSigningCertificate();
+                }
 
                 // Issue standard signed JWTs (not encrypted) so the WebApi resource server
                 // can validate tokens remotely using the JWKS endpoint.

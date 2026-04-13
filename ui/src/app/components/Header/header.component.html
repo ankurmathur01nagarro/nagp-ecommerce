@@ -65,7 +65,7 @@
         <div id="user-top-bar">
           <ul class="list-inline">
             <li class="btn-group">
-              <a href="#" class="pm_item visible-xs"> <i class="icon-bag"></i> (2) </a>
+              <a href="#" class="pm_item visible-xs"> <i class="icon-bag"></i> ({{ cartStore.items().length }}) </a>
             </li>
             @if (!this.user()) {
             <li appDropdownMenu icon="icon-login" label="Login" heading="Sign in">
@@ -116,6 +116,14 @@
                   </div>
                 </form>
               </div>
+            </li>}
+
+            @if (this.user()) {
+            <li>
+              <a href="#" (click)="$event.preventDefault(); logout()" title="Logout" aria-label="Logout">
+                <i class="icon-logout"></i>
+                <span class="hidden-xs">{{ this.user()?.name }}</span>
+              </a>
             </li>}
 
             <li appDropdownMenu class="hidden-xs" icon="icon-heart" label="Wishlist" heading="My Wishlist" hideLabelOn="hidden-sm" menuClass="larger">

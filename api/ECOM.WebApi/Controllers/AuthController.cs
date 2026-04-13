@@ -36,7 +36,9 @@ public class AuthController(IIdentityService tokenService) : ControllerBase
         var result = await tokenService.RegisterAsync(request, ct);
 
         if (!result.Success)
-            return Conflict(new { error = result.Error });
+            return result.IsConflict
+                ? Conflict(new { error = result.Error })
+                : BadRequest(new { error = result.Error });
 
         return StatusCode(StatusCodes.Status201Created, new { request.Username, request.Email });
     }

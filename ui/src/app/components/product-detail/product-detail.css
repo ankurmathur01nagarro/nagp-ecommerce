@@ -1,0 +1,87 @@
+/* .product-top-line, .product-info .price, .product-info .price .old-price,
+   .cart_quantity_button, .cart_quantity_input — all covered by global style.css */
+
+.product-images .thumbnails a {
+  display: inline-block;
+  margin: 4px;
+  border: 2px solid transparent;
+  cursor: pointer;
+}
+
+.product-images .thumbnails a.active,
+.product-images .thumbnails a:hover {
+  border-color: #dccc99;
+}
+
+.product-images .thumbnails img {
+  width: 82px;
+  height: 102px;
+  object-fit: cover;
+}
+
+.product-images .big-image img {
+  max-width: 100%;
+  height: auto;
+}
+
+.product-info .brand {
+  font-size: 14px;
+  color: #888;
+  margin-bottom: 10px;
+}
+
+/* Big image hover: fade in alternate image on hover */
+.product-images .big-image .img-hover-wrap {
+  position: relative;
+  display: block;
+  overflow: hidden;
+}
+
+.product-images .big-image .img-hover-wrap .img-back {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+
+.product-images .big-image .img-hover-wrap:hover .img-back {
+  opacity: 1;
+}
+
+/* Size selector boxes */
+.size-blocks .radio-inline.size input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.size-blocks .radio-inline.size label {
+  display: inline-block;
+  min-width: 44px;
+  height: 44px;
+  line-height: 42px;
+  text-align: center;
+  border: 1px solid #d3d3d3;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: #555;
+  margin: 0 4px 4px 0;
+  padding: 0 8px;
+  transition: border-color 0.2s, background-color 0.2s, color 0.2s;
+}
+
+.size-blocks .radio-inline.size input[type="radio"]:checked + label {
+  border-color: #dccc99;
+  background-color: #dccc99;
+  color: #fff;
+}
+
+.size-blocks .radio-inline.size label:hover {
+  border-color: #dccc99;
+}

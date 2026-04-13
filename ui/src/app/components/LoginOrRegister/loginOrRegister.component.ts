@@ -43,8 +43,8 @@ export class LoginOrRegisterComponent {
     required(p.password);
     required(p.email);
     required(p.confirmPassword);
-    pattern(p.password, /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/, {
-      message: 'Password must be minimum eight characters, at least one letter and one number',
+    pattern(p.password, /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/, {
+      message: 'Password must be at least 8 characters and include uppercase, lowercase, digit, and special character',
     });
     email(p.email, { message: 'Please enter a valid email address' });
     validate(p.confirmPassword, ({ value, valueOf }) => {
@@ -56,11 +56,9 @@ export class LoginOrRegisterComponent {
   });
 
   constructor() {
-    // Side effect: persist session and navigate away when login succeeds.
-    // Also fires on page load if a valid session was restored by AuthStore.onInit.
+    // Navigate away when login succeeds (tracks the user() signal synchronously).
     effect(() => {
-      if (this.authStore.isLoggedIn()) {
-        localStorage.setItem('loginSession', JSON.stringify(this.authStore.user()));
+      if (this.authStore.user() && !this.authStore.isExpired()) {
         this.router.navigate(['/']);
       }
     });

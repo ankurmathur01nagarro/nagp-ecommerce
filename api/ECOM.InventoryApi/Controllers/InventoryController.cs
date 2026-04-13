@@ -9,7 +9,7 @@ namespace ECOM.InventoryApi.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class InventoryController(IInventoryRepository repository) : ControllerBase
+public class InventoryController(IInventoryRepository repository, IOfferRepository offerRepository) : ControllerBase
 {
     [HttpGet("{id:int}")]
     public async Task<IActionResult> GetById(int id, CancellationToken ct)
@@ -133,6 +133,97 @@ public class InventoryController(IInventoryRepository repository) : ControllerBa
         await repository.ReleaseReservationAsync(request.ProductId, request.Quantity, ct);
         var updated = await repository.GetByProductIdAsync(request.ProductId, ct);
         return Ok(MapToResponse(updated!));
+    }
+
+    [HttpPost("stock")]
+    public async Task<IActionResult> BulkStock([FromBody] BulkStockRequest request, CancellationToken ct)
+    {
+        if (request.Skus is not { Count: > 0 })
+            return Ok(new BulkStockResponse([]));
+
+        if (request.Skus.Count > 200)
+            return BadRequest(new { error = "A maximum of 200 SKUs may be requested at once." });
+
+        var skus = request.Skus.Distinct().ToArray();
+
+        var inventories = await repository.GetBySkusAsync(skus, ct);
+        var productIds = inventories.Select(i => i.ProductId).ToArray();
+        var offers = await offerRepository.GetActiveForProductsAsync(productIds, ct);
+
+        // Best offer per product: product-specific wins; catalog-wide (null ProductId) is the fallback
+        var productSpecificOffers = offers
+            .Where(o => o.ProductId.HasValue)
+            .GroupBy(o => o.ProductId!.Value)
+            .ToDictionary(g => g.Key, g => g.First());
+        var catalogWideOffer = offers.FirstOrDefault(o => o.ProductId is null);
+
+        var inventoryBySku = inventories.ToDictionary(i => i.Sku, StringComparer.OrdinalIgnoreCase);
+
+        var items = skus.Select(sku =>
+        {
+            var inv = inventoryBySku.GetValueOrDefault(sku);
+            var available = inv is not null ? inv.Quantity - inv.Reserved : 0;
+
+            var offer = inv is not null
+                ? productSpecificOffers.GetValueOrDefault(inv.ProductId) ?? catalogWideOffer
+                : catalogWideOffer;
+            var offerSummary = offer is not null
+                ? new ActiveOfferSummary(offer.Name, offer.DiscountType, offer.DiscountValue, offer.EndsAt)
+                : null;
+
+            return new ProductStockSummary(sku, available, available > 0, offerSummary);
+        }).ToList();
+
+        return Ok(new BulkStockResponse(items));
+    }
+
+    [HttpPost("offers")]
+    public async Task<IActionResult> OffersBySku([FromBody] OffersBySkuRequest request, CancellationToken ct)
+    {
+        if (request.Skus is not { Count: > 0 })
+            return Ok(new OffersBySkuResponse([]));
+
+        if (request.Skus.Count > 200)
+            return BadRequest(new { error = "A maximum of 200 SKUs may be requested at once." });
+
+        var skus = request.Skus.Distinct().ToArray();
+
+        // Resolve SKUs → ProductIds via Inventories, then fetch all active offers in one query
+        var inventories = await repository.GetBySkusAsync(skus, ct);
+        var productIds = inventories.Select(i => i.ProductId).ToArray();
+        var allOffers = productIds.Length > 0
+            ? await offerRepository.GetActiveForProductsAsync(productIds, ct)
+            : [];
+
+        // Separate product-specific from catalog-wide
+        var offersByProductId = allOffers
+            .Where(o => o.ProductId.HasValue)
+            .GroupBy(o => o.ProductId!.Value)
+            .ToDictionary(g => g.Key, g => g.ToList());
+        var catalogWideOffers = allOffers.Where(o => o.ProductId is null).ToList();
+
+        var inventoryBySku = inventories.ToDictionary(i => i.Sku, StringComparer.OrdinalIgnoreCase);
+
+        var items = skus.Select(sku =>
+        {
+            var inv = inventoryBySku.GetValueOrDefault(sku);
+
+            var productOffers = inv is not null && offersByProductId.TryGetValue(inv.ProductId, out var po)
+                ? po
+                : [];
+
+            // Merge: product-specific first, then catalog-wide; deduplicate by OfferId
+            var combined = productOffers
+                .Concat(catalogWideOffers)
+                .DistinctBy(o => o.Id)
+                .OrderByDescending(o => o.DiscountValue)
+                .Select(o => new SkuOfferDetail(o.Id, o.Name, o.Description, o.DiscountType, o.DiscountValue, o.StartsAt, o.EndsAt))
+                .ToList();
+
+            return new SkuOfferInfo(sku, combined);
+        }).ToList();
+
+        return Ok(new OffersBySkuResponse(items));
     }
 
     [HttpDelete("{id:int}")]
