@@ -353,7 +353,19 @@ Show-SectionHeader "Install ArgoCD Application that contains all (Apps of App Pa
 $ctx.ExecuteStep("Deploying Applications via ArgoCD", {
     kubectl label ns nagp-ecom "istio.io/dataplane-mode=ambient"
     
-    kubectl apply -f ..\scripts\application.yaml
+    Write-SpectreHost "[yellow]Environment local or cloud[/]"
+    $argo_env = Confirm-Spectre -Question "Install local applications?" -DefaultAnswer $false
+    Write-SpectreHost ""
+
+    if ($argo_env) {
+        Write-SpectreHost "Deploying applications with [green]local[/] environment configuration"
+         # Sync ArgoCD Application with local overlay (kustomize build will pick correct env config)
+         kubectl apply -f ..\scripts\application.yaml
+    } else {
+        Write-SpectreHost "Deploying applications with [green]cloud[/] environment configuration"
+         # Sync ArgoCD Application with cloud overlay (kustomize build will pick correct env config)
+        kubectl apply -f ..\scripts\application-cloud.yaml
+    }
     $ctx.AutoTrack("ArgoCDApplication", "nagp-applications")
 })
 

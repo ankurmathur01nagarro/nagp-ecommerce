@@ -13,7 +13,7 @@ spec:
       path: deployment/scripts/apps
       helm:
         valueFiles:
-          - $values/deployment/scripts/apps/values.yaml
+          - $values/deployment/scripts/apps/values-cloud.yaml
     - repoURL: https://github.com/ankurmathur01nagarro/nagp-ecommerce
       targetRevision: HEAD
       ref: values
