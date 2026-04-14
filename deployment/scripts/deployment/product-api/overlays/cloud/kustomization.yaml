@@ -13,7 +13,7 @@ patches:
 images:
   - name: nagp-ecom-product-migration
     newName: docker.io/ankurmathur01nagarro/nagp-ecom-product-migration
-    newTag: 0.0.1
+    newTag: 70b217fcd423a0f5419df9337f63746a843dd028
   - name: nagp-ecom-productapi
     newName: docker.io/ankurmathur01nagarro/nagp-ecom-productapi
-    newTag: 0.0.1
+    newTag: 70b217fcd423a0f5419df9337f63746a843dd028
