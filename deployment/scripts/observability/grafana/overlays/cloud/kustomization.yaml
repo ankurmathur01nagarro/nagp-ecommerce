@@ -1,0 +1,14 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+metadata:
+  name: grafana-cloud
+
+# PVC config for GKE cloud environment
+resources:
+  - ../../base
+
+patches:
+  - path: patch.pvc.grafana.cloud.yaml
+
+commonLabels:
+  environment: cloud

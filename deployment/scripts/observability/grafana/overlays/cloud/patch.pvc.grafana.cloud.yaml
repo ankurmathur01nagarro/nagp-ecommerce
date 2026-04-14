@@ -1,0 +1,11 @@
+# Cloud overlay — use GKE standard (pd-standard) for Grafana persistent storage.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: grafana-storage
+  namespace: observability
+spec:
+  storageClassName: standard
+  resources:
+    requests:
+      storage: 5Gi

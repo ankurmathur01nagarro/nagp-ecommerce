@@ -239,7 +239,7 @@ argocd-apps:
           targetRevision: "6.52.0"
           helm:
             valueFiles:
-              - $values/deployment/scripts/observability/loki/helm-loki-values.yaml
+              - $values/deployment/scripts/observability/loki/helm-loki-values-cloud.yaml
         - repoURL: https://github.com/ankurmathur01nagarro/nagp-ecommerce
           targetRevision: HEAD
           ref: values
@@ -265,7 +265,7 @@ argocd-apps:
           targetRevision: "1.24.4"
           helm:
             valueFiles:
-              - $values/deployment/scripts/observability/tempo/helm-tempo-values.yaml
+              - $values/deployment/scripts/observability/tempo/helm-tempo-values-cloud.yaml
         - repoURL: https://github.com/ankurmathur01nagarro/nagp-ecommerce
           targetRevision: HEAD
           ref: values
