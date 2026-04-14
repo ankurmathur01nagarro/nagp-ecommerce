@@ -10,7 +10,7 @@ commonAnnotations:
 images:
 - name: nagp-ecom-migration
   newName: docker.io/ankurmathur01nagarro/nagp-ecom-migration
-  newTag: 70b217fcd423a0f5419df9337f63746a843dd028
+  newTag: bab971bda92aac2f050fe0f8ac26f966afbf60a6
 - name: nagp-ecom-webapi
   newName: docker.io/ankurmathur01nagarro/nagp-ecom-webapi
-  newTag: 70b217fcd423a0f5419df9337f63746a843dd028
+  newTag: bab971bda92aac2f050fe0f8ac26f966afbf60a6
