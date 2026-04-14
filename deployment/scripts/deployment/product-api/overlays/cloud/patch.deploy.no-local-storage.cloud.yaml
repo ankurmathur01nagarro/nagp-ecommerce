@@ -1,0 +1,18 @@
+# Cloud overlay — strip local-storage volume from product-api deployment.
+# All images served via remote URLs; no shared PVC needed.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nagp-ecom-productapi
+  namespace: nagp-ecom
+spec:
+  template:
+    spec:
+      containers:
+        - name: nagp-ecom-productapi
+          volumeMounts:
+            - name: product-images
+              $patch: delete
+      volumes:
+        - name: product-images
+          $patch: delete

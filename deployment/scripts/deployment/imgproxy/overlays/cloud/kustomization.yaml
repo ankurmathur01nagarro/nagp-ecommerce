@@ -6,3 +6,6 @@ resources:
 
 commonAnnotations:
   deployment.environment: cloud
+
+patches:
+  - path: patch.deploy.no-local-storage.cloud.yaml

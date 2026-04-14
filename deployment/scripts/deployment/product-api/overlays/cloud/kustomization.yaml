@@ -9,6 +9,7 @@ commonAnnotations:
 
 patches:
   - path: patch.pvc.product-images.cloud.yaml
+  - path: patch.deploy.no-local-storage.cloud.yaml
 
 images:
   - name: nagp-ecom-product-migration

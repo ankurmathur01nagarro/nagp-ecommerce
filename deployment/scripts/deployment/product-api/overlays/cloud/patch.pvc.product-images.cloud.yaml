@@ -1,13 +1,9 @@
-# Cloud overlay — replace democratic-csi NFS class with GCP Filestore (ReadWriteMany).
-# Requires the Filestore CSI driver enabled on the GKE cluster:
-#   gcloud container clusters update CLUSTER --update-addons=GcpFilestoreCsiDriver=ENABLED
+# Cloud overlay — remove shared PVC entirely.
+# All product images are served via remote URLs (Pexels, Unsplash, DummyJSON).
+# When local image uploads are needed, re-enable with Filestore CSI or GCS FUSE.
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: pvc-product-images
   namespace: nagp-ecom
-spec:
-  storageClassName: filestore-rwx
-  resources:
-    requests:
-      storage: 20Gi
+$patch: delete
