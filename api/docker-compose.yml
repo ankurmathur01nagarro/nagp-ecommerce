@@ -45,7 +45,7 @@ services:
   api:
     build:
       context: ..
-      dockerfile: Dockerfile.webapi
+      dockerfile: api/Dockerfile.webapi
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_HTTP_PORTS: "8080"

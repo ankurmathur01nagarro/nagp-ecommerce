@@ -10,7 +10,7 @@ src/                          ← git root
 │   └── ECOM.WebApi.Data/     ← Shared EF Core DbContext, models, migrations
 ├── ui/                       ← Angular 21 SPA
 ├── deployment/               ← Kustomize overlays (base/overlays/local|cloud)
-├── Dockerfile.webapi         ← Unified 3-stage image: ng-build → dotnet-build → aspnet runtime
+├── api/Dockerfile.webapi    ← Unified 3-stage image: ng-build → dotnet-build → aspnet runtime
 └── .github/workflows/        ← GitHub Actions CI/CD
 ```
 
@@ -83,7 +83,7 @@ The public domain is `nagp-ecom.duckdns.org`. This is already set in `appsetting
 
 ## Docker / CI
 
-- **Unified image**: `Dockerfile.webapi` at `src/` root — build context must be `src/` so both `api/` and `ui/` are accessible
+- **Unified image**: `api/Dockerfile.webapi` in `src/api/` — build context must be `src/` so both `api/` and `ui/` are accessible
 - **Docker Compose**: run from `src/api/`; `api` service context is `..` (i.e. `src/`)
 - **GitHub Actions**: workflow at `.github/workflows/docker-image.yml`; `build-and-test` job paths are relative to `src/` (the repo root)
 - Images pushed to `docker.io/ankurmathur01nagarro/`; tags updated in Kustomize overlays by the `release` job

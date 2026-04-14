@@ -3,12 +3,14 @@ name: E-Commerce Build
 on:
   push:
     branches: [ "main" ]
-    paths-ignore:
-      - 'deployment/**'
+    paths:
+      - 'ui/**'
+      - 'api/**'
   pull_request:
     branches: [ "main" ]
-    paths-ignore:
-      - 'deployment/**'
+    paths:
+      - 'ui/**'
+      - 'api/**'
 env:
   image_tag: ${{ github.sha }}
   docker_pat: ${{ secrets.DOCKER_REGISTRY_PAT }}
@@ -83,7 +85,7 @@ jobs:
       with:
         push: true
         context: .
-        file: ./Dockerfile.webapi
+        file: ./api/Dockerfile.webapi
         tags: docker.io/ankurmathur01nagarro/nagp-ecom-webapi:${{ env.image_tag }},docker.io/ankurmathur01nagarro/nagp-ecom-webapi:latest
     
     - name: Build and push Identity API Docker images
