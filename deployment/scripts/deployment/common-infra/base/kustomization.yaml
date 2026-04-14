@@ -6,6 +6,5 @@ resources:
   - statefulSet.database.k8s.yaml
   - pvc.postgres.k8s.yaml
   - service.database.k8s.yaml
-  - secretstore.k8s.yaml
   - secret.secrets-nagp.k8s.yaml
   - certificate.k8s.yaml
