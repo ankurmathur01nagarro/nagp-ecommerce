@@ -9,3 +9,4 @@ commonAnnotations:
 
 patches:
   - path: patch.deploy.no-local-storage.cloud.yaml
+  - path: patch.configmap.no-local-storage.cloud.yaml

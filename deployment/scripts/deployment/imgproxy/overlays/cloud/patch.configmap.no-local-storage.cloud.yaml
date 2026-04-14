@@ -1,0 +1,10 @@
+# Cloud overlay — remove local filesystem config since no shared PVC exists on cloud.
+# All product images served via remote URLs only.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nagp-ecom-imgproxy-config
+  namespace: nagp-ecom
+data:
+  IMGPROXY_LOCAL_FILESYSTEM_ROOT: ""
+  IMGPROXY_ALLOWED_SOURCES: "https://images.pexels.com/,https://images.unsplash.com/,https://cdn.dummyjson.com/"
