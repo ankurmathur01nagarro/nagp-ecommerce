@@ -50,6 +50,8 @@ $ctx.ExecuteStep("Adding Helm Repositories", {
     helm repo add argo https://argoproj.github.io/argo-helm
     helm repo add external-secrets https://charts.external-secrets.io
     helm repo add hashicorp https://helm.releases.hashicorp.com
+    helm repo add jetstack https://charts.jetstack.io
+    helm repo add stakater https://stakater.github.io/stakater-charts
     helm repo update
 })
 
@@ -188,6 +190,14 @@ $ctx.ExecuteStep("Creating Namespaces and Secrets", {
         Log-Info "Namespace 'observability' already exists"
     }
 
+    # Create nagp-ecom namespace
+    if (-not (Test-NamespaceExists -Namespace "nagp-ecom")) {
+        kubectl create namespace nagp-ecom
+        $ctx.AutoTrack("Namespace", "nagp-ecom")
+    } else {
+        Log-Info "Namespace 'nagp-ecom' already exists"
+    }
+
     # Create New Relic secret for OpenTelemetry Collector
     if (-not [string]::IsNullOrWhiteSpace($NewRelicApiKey)) {
         if (-not (Test-SecretExists -Namespace "observability" -SecretName "newrelic-otel-secret")) {
@@ -223,13 +233,48 @@ $ctx.ExecuteStep("Creating Namespaces and Secrets", {
     kubectl create secret generic secret-azure-sp `
         --from-literal=ClientID="$az_clientId" `
         --from-literal=ClientSecret="$az_clientSecret" `
-        -n default
+        -n nagp-ecom
+})
+
+# Install cert-manager
+# Must be installed before ArgoCD applications are deployed — the cert-manager-webhook-duckdns
+# ArgoCD app (sync wave 1) assumes cert-manager CRDs and controllers are already present.
+Show-SectionHeader "Install cert-manager"
+$ctx.ExecuteStep("Installing cert-manager", {
+    if (-not (Test-NamespaceExists -Namespace "cert-manager")) {
+        helm install cert-manager jetstack/cert-manager `
+            --namespace cert-manager `
+            --create-namespace `
+            --set crds.enabled=true
+        $ctx.AutoTrack("HelmRelease", "cert-manager", "cert-manager")
+        Show-Success "cert-manager installed"
+    } else {
+        Log-Info "cert-manager already installed, skipping"
+    }
+})
+
+# Install Reloader
+# Watches for ConfigMap/Secret changes and automatically restarts Deployments in
+# namespaces labelled reloader-enabled=true — no per-resource annotations needed.
+Show-SectionHeader "Install Reloader"
+$ctx.ExecuteStep("Installing Reloader", {
+    if (-not (Test-NamespaceExists -Namespace "reloader")) {
+        helm install reloader stakater/reloader `
+            --namespace reloader `
+            --create-namespace `
+            --set reloader.autoReloadAll=true `
+            --set "reloader.namespaceSelector=reloader-enabled=true"
+        $ctx.AutoTrack("HelmRelease", "reloader", "reloader")
+        Show-Success "Reloader installed"
+    } else {
+        Log-Info "Reloader already installed, skipping"
+    }
 })
 
 # Install External Secrets Operator
 Show-SectionHeader "Install External Secrets Operator"
 $ctx.ExecuteStep("Installing External Secrets Operator", {
-    helm install external-secrets external-secrets/external-secrets `
+    helm upgrade --install external-secrets external-secrets/external-secrets `
         --namespace external-secrets `
         --create-namespace `
         --set installCRDs=true
@@ -305,14 +350,8 @@ if ($InstallDemocraticCsi) {
 Show-SectionHeader "Install ArgoCD Application that contains all (Apps of App Pattern)"
 
 $ctx.ExecuteStep("Deploying Applications via ArgoCD", {
-    # Create namespace for application with istio ambient mode labels
-    if (-not (Test-NamespaceExists -Namespace "nagp-ecom")) {
-        kubectl create namespace nagp-ecom
-        $ctx.AutoTrack("Namespace", "nagp-ecom")
-        kubectl label ns nagp-ecom "istio.io/dataplane-mode=ambient"
-    } else {
-        Log-Info "Namespace 'nagp-ecom' already exists"
-    }
+    kubectl label ns nagp-ecom "istio.io/dataplane-mode=ambient"
+    kubectl label ns nagp-ecom "reloader-enabled=true"
     
     kubectl apply -f ..\scripts\application.yaml
     $ctx.AutoTrack("ArgoCDApplication", "nagp-applications")

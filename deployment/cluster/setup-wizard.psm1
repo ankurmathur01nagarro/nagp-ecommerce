@@ -559,6 +559,8 @@ function Show-CompletionSummary {
 # Display prerequisite check results
 Export-ModuleMember -Function @(
     'Initialize-SpectreConsole',
+    'Write-SpectreHost',
+    'Read-SpectreText',
     'Show-WizardHeader',
     'Get-ArgoCDPassword',
     'Get-GrafanaPassword',

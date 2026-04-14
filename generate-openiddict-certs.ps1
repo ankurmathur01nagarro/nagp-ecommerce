@@ -101,7 +101,7 @@ $tmpFile = [System.IO.Path]::GetTempFileName()
 try {
     foreach ($key in $secrets.Keys) {
         Write-Host "  Setting secret: $key"
-        [System.IO.File]::WriteAllText($tmpFile, $secrets[$key], [System.Text.Encoding]::UTF8)
+        [System.IO.File]::WriteAllText($tmpFile, $secrets[$key], [System.Text.UTF8Encoding]::new($false))
         az keyvault secret set --vault-name $VaultName --name $key --file $tmpFile --output none
         if ($LASTEXITCODE -ne 0) {
             throw "az keyvault secret set failed for '$key' (exit code $LASTEXITCODE)"
