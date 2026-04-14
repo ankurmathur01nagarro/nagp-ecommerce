@@ -242,7 +242,7 @@ $ctx.ExecuteStep("Creating Namespaces and Secrets", {
 Show-SectionHeader "Install cert-manager"
 $ctx.ExecuteStep("Installing cert-manager", {
     if (-not (Test-NamespaceExists -Namespace "cert-manager")) {
-        helm install cert-manager jetstack/cert-manager `
+        helm upgrade --install cert-manager jetstack/cert-manager `
             --namespace cert-manager `
             --create-namespace `
             --set crds.enabled=true
@@ -259,12 +259,13 @@ $ctx.ExecuteStep("Installing cert-manager", {
 Show-SectionHeader "Install Reloader"
 $ctx.ExecuteStep("Installing Reloader", {
     if (-not (Test-NamespaceExists -Namespace "reloader")) {
-        helm install reloader stakater/reloader `
+        helm upgrade --install reloader stakater/reloader `
             --namespace reloader `
             --create-namespace `
             --set reloader.autoReloadAll=true `
             --set "reloader.namespaceSelector=reloader-enabled=true"
         $ctx.AutoTrack("HelmRelease", "reloader", "reloader")
+        kubectl label ns nagp-ecom "reloader-enabled=true"
         Show-Success "Reloader installed"
     } else {
         Log-Info "Reloader already installed, skipping"
@@ -351,7 +352,6 @@ Show-SectionHeader "Install ArgoCD Application that contains all (Apps of App Pa
 
 $ctx.ExecuteStep("Deploying Applications via ArgoCD", {
     kubectl label ns nagp-ecom "istio.io/dataplane-mode=ambient"
-    kubectl label ns nagp-ecom "reloader-enabled=true"
     
     kubectl apply -f ..\scripts\application.yaml
     $ctx.AutoTrack("ArgoCDApplication", "nagp-applications")

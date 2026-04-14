@@ -132,9 +132,9 @@
                   <div class="col-md-4 col-sm-6 pl-item">
                     <figure>
                       <a [routerLink]="['/product', item.id]" class="pl-w-backside">
-                        <img src="productimages/{{item.images[0]?.id}}" alt="" />
+                        <img src="productimages/{{item.images[0]?.id}}?width=300&height=340&resizing_type=fill" alt="" />
                         <span class="pl-backside">
-                          <img src="productimages/{{item.images[1]?.id}}" alt="" />
+                          <img src="productimages/{{item.images[1]?.id}}?width=300&height=340&resizing_type=fill" alt="" />
                         </span>
                       </a>
                       @if (item.hasDiscount) {
@@ -192,9 +192,9 @@
                     <div class="col-sm-4 plv-image">
                       <figure>
                         <a [routerLink]="['/product', item.id]" class="plv-w-backside">
-                          <img src="productimages/{{item.images[0]?.id}}" alt="" />
+                          <img src="productimages/{{item.images[0]?.id}}?width=240&height=280&resizing_type=fill" alt="" />
                           <span class="plv-backside">
-                            <img src="productimages/{{item.images[1]?.id}}" alt="" />
+                            <img src="productimages/{{item.images[1]?.id}}?width=240&height=280&resizing_type=fill" alt="" />
                           </span>
                         </a>
                       </figure>
